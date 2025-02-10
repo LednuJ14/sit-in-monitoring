@@ -36,7 +36,7 @@ def login():
     if user:
         return redirect(url_for("dashboard"))
     else:
-        flash("Invalid ID No. or password", "error")
+        flash("Invalid ID No. or password", "error")    
         return redirect(url_for("home"))
         
 @app.route("/register", methods=["POST"])
@@ -51,7 +51,7 @@ def register():
     password = request.form.get("password")
     repeat_password = request.form.get("repeat_password")
 
-    if not all([idno, lastname, firstname, course, yearlevel, email, password]):
+    if not all([idno, lastname, firstname, course, yearlevel, email, password, repeat_password]):
         flash("All fields except Middle Name are required!", "error")
         return redirect(url_for("home"))
     

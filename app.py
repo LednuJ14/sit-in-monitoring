@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import mysql.connector
 from mysql.connector import Error
 
@@ -27,6 +27,7 @@ def login():
     idno = request.form.get("idno")
     password = request.form.get("password")
 
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM users WHERE idno = %s AND password = %s", (idno, password))
@@ -34,9 +35,10 @@ def login():
     conn.close()
 
     if user:
+        session['user_id'] = user['idno']  
         return redirect(url_for("dashboard"))
     else:
-        flash("Invalid ID No. or password", "error")    
+        flash("Invalid ID No. or password", "error")
         return redirect(url_for("home"))
         
 @app.route("/register", methods=["POST"])
@@ -81,9 +83,28 @@ def register():
 
 
 
+# Dashboard Route - Displays user profile after login
 @app.route("/dashboard")
 def dashboard():
-    return "Login Successful!"
+    if 'user_id' not in session:
+        flash("You need to log in first", "error")
+        return redirect(url_for('home'))  # Redirect to home if user is not logged in
+
+    user_id = session['user_id']
+
+    # Fetch user details from the database
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM users WHERE idno = %s", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+
+    if user:
+        return render_template("dashboard.html", user=user)  # Pass user data to template
+    else:
+        flash("User not found", "error")
+        return redirect(url_for('home'))  # Redirect to home if user is not found
+
 
 if __name__ == "__main__":
     app.run(debug=True)

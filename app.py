@@ -7,7 +7,7 @@ def get_db_connection():
         host="localhost",
         user="root",
         password="",
-        database="user_db"
+        database="sit_in_system"
     )
 
 app = Flask(__name__)

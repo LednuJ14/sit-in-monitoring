@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: #0047ab;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+        }
+        .profile-card {
+            width: 300px;
+            border: 1px solid #000;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .edit-btn {
+            background-color: #0047ab;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="navbar">
+            <div class="w3-bar">
+                <b><h2 class="w3-bar-item"><b>College of Computer Studies</b></h2>
+                    <a href="{{ url_for('home') }}" class="w3-right w3-margin w3-padding"><img src="static/logout.png" width="25" height="25"></a>
+                    <b><a href="#" class="w3-right w3-margin w3-padding">RESERVATION</a></b>
+                    <b><a href="#" class="w3-right w3-margin w3-padding">HISTORY</a></b>
+                    <b><a href="{{ url_for('profile') }}" class="w3-right w3-margin w3-padding">PROFILE</a></b>
+                    <b><a href="{{ url_for('student_dashboard') }}" class="w3-right w3-margin w3-padding">HOME</a></b>
+                    <b><a href="#" class="w3-right w3-margin w3-padding">NOTIFICATION</a></b>
+                </b>
+            </div>
+        </div>
+        <div class="w3-container" style="display: flex; justify-content: space-between; gap: 20px;">
+            
+            <div class="w3-container w3-margin" style="width: 30%; border-radius: 10px 10px; ">
+                <div class="w3-modal-content w3-card-4 w3-round-xlarge" style="width: 100%;">
+                    <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+                        <h2 class="w3-margin"><b>PROFILE</b></h2>
+                    </header>
+                    <div class="container w3-margin w3-padding">
+                        <center>
+                            <img src="static/images/default_user.png" alt="Profile Picture" style="width: 100px; height: 100px; border-radius: 50%; background-color: #ccc;" class="w3-margin">
+                        </center>
+                        <p><strong>ID No:</strong> {{ user.idno }}</p>
+                        <p><strong>Name:</strong> {{ user.firstname }} {{ user.middlename }} {{ user.lastname }}</p>
+                        <p><strong>Course:</strong> {{ user.course }}</p>
+                        <p><strong>Year Level:</strong> {{ user.yearlevel }}</p>
+                        <p><strong>Email:</strong> {{ user.email }}</p>
+                        <p><strong>Remaining Session:</strong> {{ user.remaining_sessions }}</p>
+                        <p><strong>Password:</strong> [Hidden]</p>  
+                        <center><button class="edit-btn w3-margin"><b>Edit Profile</b></button></center>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w3-container w3-margin" style="display: flex; flex-direction: column; gap: 10px; width: 30%; border-radius: 10px 10px;">
+                <div class="w3-modal-content w3-card-4 w3-round-xlarge" style="width: 100%; ">
+                    <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+                        <h3 class="w3-margin"><b>SIT-IN RULES</b></h3>
+                    </header>
+                    <div class="container w3-padding" style="height: 250px; overflow-y: auto;">
+                        <ol>
+                            <li><strong>Permission Required</strong> – Students must obtain prior approval from the instructor before sitting in a class.</li>
+                            <li><strong>No Disruptions</strong> – Sit-in students must remain silent and not interfere with the lecture or class activities.</li>
+                            <li><strong>No Participation</strong> – Unless granted permission, sit-in students may not engage in discussions, ask questions, or participate in graded activities.</li>
+                            <li><strong>Limited Seating</strong> – Priority seating is given to enrolled students; sit-ins may only occupy available seats.</li>
+                            <li><strong>Respect the Environment</strong> – Maintain a respectful attitude toward the instructor, classmates, and classroom policies.</li>
+                            <li><strong>No Recording</strong> – Audio or video recording of the lecture is prohibited unless explicitly allowed by the instructor.</li>
+                            <li><strong>Stay for the Full Session</strong> – Sit-in students must remain for the entire class and not leave midway unless necessary.</li>
+                            <li><strong>No Use of Devices</strong> – Laptops, phones, or tablets should not be used unless the class permits them.</li>
+                            <li><strong>Dress Code</strong> – Follow the institution's dress code and maintain proper attire in the classroom.</li>
+                            <li><strong>Sit-In Limitations</strong> – A student may only sit in on a limited number of sessions before formal registration is required.</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="w3-modal-content w3-card-4 w3-margin-top" style="width: 100%; border-radius: 10px 10px;">
+                    <header class="w3-container w3-round-xlarge" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+                        <h3 class="w3-margin"><b>LABORATORY RULES & REGULATIONS</b></h3>
+                    </header>
+                    <div class="container w3-padding" style="height: 250px; overflow-y: auto;">
+                        <p>1. Maintain silence, proper decorum, and discipline inside the laboratory. Mobile phones, walkmans, and other personal pieces of equipment must be switched off.</p>
+                        <p>2. Games are not allowed inside the lab. This includes computer-related games, card games, and other games that may disturb the operation of the lab.</p>
+                        <p>3. Surfing the Internet is allowed only with the permission of the instructor. Downloading and installing software are strictly prohibited.</p>
+                        <p>4. Getting access to other websites not related to the course (especially pornographic and illicit sites) is strictly prohibited.</p>
+                        <p>5. Deleting computer files and changing the set-up of the computer is a major offense.</p>
+                        <p>6. Observe computer time usage carefully. A fifteen-minute allowance is given for each use. Otherwise, the unit will be given to those who wish to "sit-in."</p>
+                        <p>7. Observe proper decorum while inside the laboratory:</p>
+                        <ul>
+                            <li>Do not enter the lab unless the instructor is present.</li>
+                            <li>All bags, knapsacks, and the like must be deposited at the counter.</li>
+                            <li>Follow the seating arrangement of your instructor.</li>
+                            <li>At the end of class, all software programs must be closed.</li>
+                            <li>Return all chairs to their proper places after using.</li>
+                        </ul>
+                        <p>8. Chewing gum, eating, drinking, smoking, and other forms of vandalism are prohibited inside the lab.</p>
+                        <p>9. Anyone causing a continual disturbance will be asked to leave the lab. Acts or gestures offensive to the community, including public displays of physical intimacy, are not tolerated.</p>
+                        <p>10. Persons exhibiting hostile or threatening behavior such as yelling, swearing, or disregarding requests made by lab personnel will be asked to leave the lab.</p>
+                        <p>11. For serious offenses, the lab personnel may call the Civil Security Office (CSU) for assistance.</p>
+                        <p>12. Any technical problem or difficulty must be addressed to the laboratory supervisor, student assistant, or instructor immediately.</p>
+                
+                        <h3><strong>DISCIPLINARY ACTION</strong></h3>
+                        <ul>
+                            <li><strong>First Offense:</strong> The Head, Dean, or OIC recommends to the Guidance Center for a suspension from classes for each offender.</li>
+                            <li><strong>Second and Subsequent Offenses:</strong> A recommendation for a heavier sanction will be endorsed to the Guidance Center.</li>
+                        </ul>
+                    </div>
+                </div>
+                
+            </div>
+        
+            <!-- Middle Section: Announcement -->
+            <div class="w3-container w3-margin" style="width: 30%; border-radius: 10px 10px;">
+                <div class="w3-modal-content w3-card-4 w3-round-xlarge" style="width: 100%; ">
+                    <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+                        <h2 class="w3-margin"><b>ANNOUNCEMENT</b></h2>
+                    </header>
+                    <div class="container w3-margin">
+                        <p>AFSAFAFASFAS</p>
+                    </div>
+                </div>
+            </div>
+        </div>           
+    </div>
+</body>
+</html>

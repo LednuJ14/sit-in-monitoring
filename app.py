@@ -93,7 +93,7 @@ def admin_dashboard():
     if "admin" not in session:
         flash("Admin login required", "error")
         return redirect(url_for("home"))
-    return render_template("admin_dashboard.html", admin=ADMIN_CREDENTIALS[session["admin"]])
+    return render_template("admin/admin_dashboard.html", admin=ADMIN_CREDENTIALS[session["admin"]])
 
 @app.route("/student_dashboard")
 def student_dashboard():
@@ -109,7 +109,7 @@ def student_dashboard():
     conn.close()
 
     if user:
-        return render_template("student_dashboard.html", user=user)
+        return render_template("student/student_dashboard.html", user=user)
     else:
         flash("User not found", "error")
         return redirect(url_for('home'))
@@ -128,7 +128,7 @@ def profile():
     conn.close()
 
     if user:
-        return render_template('profile.html', user=user)
+        return render_template('student/profile.html', user=user)
     else:
         flash("User not found", "error")
         return redirect(url_for('home'))
@@ -204,7 +204,7 @@ def edit_profile():
 
     cursor.close()
     conn.close()
-    return render_template("profile.html", user=user)
+    return render_template("student/profile.html", user=user)
 
 @app.route("/logout")
 def logout():

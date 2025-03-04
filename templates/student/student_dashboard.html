@@ -1,0 +1,98 @@
+{% extends "student/base.html" %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+
+<style>
+.edit-btn {
+    background-color: #0047ab;
+    color: white;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+.edit-btn:hover {
+    background-color: #003d91;
+}
+</style>
+<div class="w3-container" style="display: flex; justify-content: space-between; gap: 20px; align-items: flex-start;">
+    
+    <!-- Left Side: Profile Section -->
+    <div class="w3-container w3-margin" style="width: 30%; flex-shrink: 0;">
+        <div class="w3-modal-content w3-card-4" style="border-radius: 10px; width: 100%;">
+            <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+                <h2 class="w3-margin"><b>PROFILE</b></h2>
+            </header>
+            <div class="container w3-margin w3-padding">
+                <center>
+                    <img src="static/images/default_user.png" alt="Profile Picture" style="width: 100px; height: 100px; border-radius: 50%;" class="w3-margin">
+                </center>
+                <p><strong>ID No:</strong> {{ user.idno }}</p>
+                <p><strong>Name:</strong> {{ user.firstname }} {{ user.middlename }} {{ user.lastname }}</p>
+                <p><strong>Course:</strong> {{ user.course }}</p>
+                <p><strong>Year Level:</strong> {{ user.yearlevel }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Remaining Session:</strong> {{ user.remaining_sessions }}</p>
+                <center><button class="edit-btn w3-margin" id="profileBtn"><b>Profile</b></button></center>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side: Announcement + Laboratory Rules -->
+    <div class="w3-container" style="width: 70%; display: flex; flex-direction: column; gap: 20px; flex-grow: 1;">
+        
+        <!-- Announcement Section (On Top) -->
+        <div class="w3-modal-content w3-card-4" style="border-radius: 10px; flex-grow: 1; width: 90%;">
+            <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+                <h2 class="w3-margin"><b>ANNOUNCEMENT</b></h2>
+            </header>
+            <div class="container w3-margin" style="max-height: 270px; overflow-y: auto;">
+                <p>Important updates will be posted here.</p>
+            </div>
+        </div>
+
+        <!-- Laboratory Rules Section (Below Announcement) -->
+        <div class="w3-modal-content w3-card-4" style="border-radius: 10px; flex-grow: 1; width: 90%;">
+            <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+                <h3 class="w3-margin"><b>LABORATORY RULES & REGULATIONS</b></h3>
+            </header>
+            <div class="container w3-padding" style="max-height: 270px; overflow-y: auto;">
+                <p>1. Maintain silence, proper decorum, and discipline inside the laboratory.</p>
+                <p>2. Games are not allowed inside the lab.</p>
+                <p>3. Surfing the Internet is allowed only with the permission of the instructor.</p>
+                <p>4. Getting access to other websites not related to the course is strictly prohibited.</p>
+                <p>5. Deleting computer files and changing the set-up of the computer is a major offense.</p>
+                <p>6. Observe computer time usage carefully.</p>
+                <p>7. Observe proper decorum while inside the laboratory:</p>
+                <ul>
+                    <li>Do not enter the lab unless the instructor is present.</li>
+                    <li>All bags must be deposited at the counter.</li>
+                    <li>Follow the seating arrangement of your instructor.</li>
+                    <li>Close all software programs before leaving.</li>
+                    <li>Return all chairs to their proper places.</li>
+                </ul>
+                <p>8. Chewing gum, eating, drinking, smoking, and vandalism are prohibited.</p>
+                <p>9. Anyone causing a continual disturbance will be asked to leave.</p>
+                <p>10. Persons exhibiting hostile or threatening behavior will be removed.</p>
+                <p>11. For serious offenses, lab personnel may call the security office.</p>
+                <p>12. Any technical problem must be reported immediately.</p>
+
+                <h3><strong>DISCIPLINARY ACTION</strong></h3>
+                <ul>
+                    <li><strong>First Offense:</strong> Suspension from classes.</li>
+                    <li><strong>Second Offense:</strong> A heavier sanction will be enforced.</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    document.getElementById("profileBtn").addEventListener("click", function() {
+        window.location.assign("{{ url_for('profile') }}");
+    });
+</script>
+{% endblock %}

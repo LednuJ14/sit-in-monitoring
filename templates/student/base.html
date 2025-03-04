@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: #0047ab;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="w3-bar">
+            <h2 class="w3-bar-item"><b>College of Computer Studies</b></h2>
+            <a href="{{ url_for('home') }}" class="w3-right w3-margin w3-padding">
+                <img src="static/logout.png" width="25" height="25">
+            </a>
+            <b><a href="#" class="w3-right w3-margin w3-padding">RESERVATION</a></b>
+            <b><a href="#" class="w3-right w3-margin w3-padding">HISTORY</a></b>
+            <b><a href="{{ url_for('profile') }}" class="w3-right w3-margin w3-padding">PROFILE</a></b>
+            <b><a href="{{ url_for('student_dashboard') }}" class="w3-right w3-margin w3-padding">HOME</a></b>
+            <b><a href="#" class="w3-right w3-margin w3-padding">NOTIFICATION</a></b>
+        </div>
+    </div>
+
+    <div class="main-container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

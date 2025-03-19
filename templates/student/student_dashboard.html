@@ -90,9 +90,34 @@
     </div>
 </div>
 
+<!-- Debug link (invisible by default) -->
+<div style="text-align: center; margin-top: 30px; color: #ddd; font-size: 10px;">
+    <a href="{{ url_for('debug_create_test_notification') }}" style="color: #eee;" 
+       onmouseover="this.style.color='#0047ab'" onmouseout="this.style.color='#eee'">
+        Debug: Create Test Notification
+    </a>
+</div>
+
 <script>
-    document.getElementById("profileBtn").addEventListener("click", function() {
-        window.location.assign("{{ url_for('profile') }}");
+    document.addEventListener("DOMContentLoaded", function() {
+        // Profile button event
+        document.getElementById("profileBtn").addEventListener("click", function() {
+            window.location.assign("{{ url_for('profile') }}");
+        });
+
+        // Load recent notifications
+        loadRecentNotifications();
     });
+    
+    function loadRecentNotifications() {
+        fetch('/api/get_notifications')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Dashboard notifications loaded:', data);
+            })
+            .catch(error => {
+                console.error('Error loading notifications on dashboard:', error);
+            });
+    }
 </script>
 {% endblock %}

@@ -1,0 +1,194 @@
+{% extends "student/base.html" %}
+
+{% block title %}Make a Reservation{% endblock %}
+
+{% block content %}
+<style>
+    .reservation-container {
+        width: 80%;
+        margin: 30px auto;
+        padding: 20px;
+    }
+    .form-card {
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    .form-header {
+        background-color: #0047ab;
+        color: white;
+        padding: 15px;
+        border-radius: 10px 10px 0 0;
+    }
+    .form-body {
+        padding: 20px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+    .submit-btn {
+        background-color: #0047ab;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        width: 100%;
+        margin-top: 10px;
+    }
+    .submit-btn:hover {
+        background-color: #003d91;
+    }
+    .availability-info {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        border-left: 5px solid #0047ab;
+    }
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    .info-value {
+        font-weight: bold;
+    }
+    .hidden {
+        display: none;
+    }
+</style>
+
+<div class="reservation-container">
+    <div class="form-card">
+        <div class="form-header">
+            <h2><b>MAKE A RESERVATION</b></h2>
+        </div>
+        <div class="form-body">
+            <form id="reservationForm" action="{{ url_for('create_reservation') }}" method="POST">
+                <div class="form-group">
+                    <label for="idno">ID Number:</label>
+                    <input type="text" id="idno" name="idno" class="form-control" value="{{ user.idno }}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" class="form-control" value="{{ user.firstname }} {{ user.lastname }}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="purpose">Purpose:</label>
+                    <select id="purpose" name="purpose" class="form-control" required>
+                        <option value="">Select Purpose</option>
+                        <option value="C">C Programming</option>
+                        <option value="C#">C# Programming</option>
+                        <option value="JAVA">Java Programming</option>
+                        <option value="ASP.NET">ASP.NET</option>
+                        <option value="PHP">Php Programming</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lab">Laboratory:</label>
+                    <select id="lab" name="lab" class="form-control" required onchange="checkAvailability()">
+                        <option value="">Select Laboratory</option>
+                        <option value="524">524</option>
+                        <option value="526">526</option>
+                        <option value="528">528</option>
+                        <option value="530">530</option>
+                        <option value="542">542</option>
+                        <option value="544">544</option>
+                    </select>
+                </div>
+                
+                <div id="availabilityContainer" class="availability-info hidden">
+                    <div class="info-row">
+                        <span>Available Computers:</span>
+                        <span id="availableComputers" class="info-value">--</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="timeIn">Time In (Optional):</label>
+                        <input type="time" id="timeIn" name="time_in" class="form-control" value="{{ current_time_24h }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="date">Date (Optional):</label>
+                        <input type="date" id="date" name="date" class="form-control" value="{{ current_date_ymd }}">
+                    </div>
+                    <div class="info-row">
+                        <span>Remaining Sessions:</span>
+                        <span id="remainingSessions" class="info-value">{{ user.remaining_sessions }}</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn" disabled>Submit Reservation</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function checkAvailability() {
+        const lab = document.getElementById('lab').value;
+        if (!lab) {
+            document.getElementById('availabilityContainer').classList.add('hidden');
+            document.getElementById('submitBtn').disabled = true;
+            return;
+        }
+        
+        // Simulate API call to check availability
+        fetch(`/api/check_lab_availability?lab=${encodeURIComponent(lab)}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('availabilityContainer').classList.remove('hidden');
+                document.getElementById('availableComputers').textContent = data.available_computers || 0;
+                
+                // Enable submit button only if computers are available
+                document.getElementById('submitBtn').disabled = data.available_computers <= 0;
+                
+                if (data.available_computers <= 0) {
+                    alert('No computers available in this lab. Please select another lab.');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking availability:', error);
+                alert('Error checking lab availability. Please try again.');
+            });
+    }
+    
+    // Check if student has active sessions
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/api/check_student_active_sessions')
+            .then(response => response.json())
+            .then(data => {
+                if (data.has_active_session) {
+                    alert('You already have an active lab session. Please end that session before making a new reservation.');
+                    window.location.href = '{{ url_for("student_dashboard") }}';
+                }
+                
+                // Check if student has remaining sessions
+                const remainingSessions = parseInt('{{ user.remaining_sessions }}');
+                if (remainingSessions <= 0) {
+                    alert('You have no remaining sessions. Please contact the administrator.');
+                    document.getElementById('submitBtn').disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error checking active sessions:', error);
+            });
+    });
+</script>
+{% endblock %} 

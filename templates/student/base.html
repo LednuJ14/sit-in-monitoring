@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Dashboard{% endblock %}</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,6 +25,184 @@
             text-decoration: none;
             padding: 10px 20px;
         }
+        /* Notification styles */
+        .notification-dropdown {
+            position: relative;
+            display: inline-block;
+            z-index: 1000;
+        }
+        .notification-btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 10px 20px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            border-radius: 5px;
+        }
+        .notification-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+        .notification-btn:focus {
+            outline: 2px solid #ffffff;
+            border-radius: 5px;
+        }
+        .notification-btn i {
+            margin-left: 5px;
+            font-size: 18px;
+        }
+        @keyframes bellShake {
+            0% { transform: rotate(0); }
+            15% { transform: rotate(5deg); }
+            30% { transform: rotate(-5deg); }
+            45% { transform: rotate(4deg); }
+            60% { transform: rotate(-4deg); }
+            75% { transform: rotate(2deg); }
+            85% { transform: rotate(-2deg); }
+            92% { transform: rotate(1deg); }
+            100% { transform: rotate(0); }
+        }
+        .notification-btn i.has-unread {
+            color: #ffcc00;
+            animation: bellShake 1s cubic-bezier(.36,.07,.19,.97) infinite;
+        }
+        .notification-badge {
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            padding: 3px 6px;
+            font-size: 12px;
+            position: relative;
+            margin-left: 5px;
+            font-weight: bold;
+            display: inline-block !important;
+        }
+        
+        /* Notification Modal */
+        .notification-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .notification-modal-content {
+            position: relative;
+            background-color: white;
+            margin: auto;
+            padding: 0;
+            width: 50%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .notification-header {
+            padding: 15px 20px;
+            background-color: #0047ab;
+            color: white;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-close {
+            color: white;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+        
+        .notification-close:hover {
+            color: #ddd;
+        }
+        
+        .notification-list {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            max-height: 450px;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .notification-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .notification-item.unread {
+            background-color: #e6f7ff;
+        }
+        
+        .notification-item.unread:hover {
+            background-color: #d1eeff;
+        }
+        
+        .notification-message {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .notification-time {
+            color: #777;
+            font-size: 12px;
+        }
+        
+        .mark-all-read {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .mark-all-read:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .notification-empty {
+            padding: 30px;
+            text-align: center;
+            color: #777;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .show {
+            display: block;
+        }
+        
+        /* Force display for debugging */
+        #notificationModal.force-show {
+            display: flex !important;
+        }
     </style>
 </head>
 <body>
@@ -33,16 +212,207 @@
             <a href="{{ url_for('home') }}" class="w3-right w3-margin w3-padding">
                 <img src="static/logout.png" width="25" height="25">
             </a>
-            <b><a href="#" class="w3-right w3-margin w3-padding">RESERVATION</a></b>
-            <b><a href="#" class="w3-right w3-margin w3-padding">HISTORY</a></b>
+            <b><a href="{{ url_for('student_reservation') }}" class="w3-right w3-margin w3-padding">RESERVATION</a></b>
+            <b><a href="{{ url_for('student_history') }}" class="w3-right w3-margin w3-padding">HISTORY</a></b>
             <b><a href="{{ url_for('profile') }}" class="w3-right w3-margin w3-padding">PROFILE</a></b>
             <b><a href="{{ url_for('student_dashboard') }}" class="w3-right w3-margin w3-padding">HOME</a></b>
-            <b><a href="#" class="w3-right w3-margin w3-padding">NOTIFICATION</a></b>
+            
+            <div class="notification-dropdown w3-right w3-margin">
+                <button id="notificationBtn" class="notification-btn">
+                    NOTIFICATION <i id="bellIcon" class="fas fa-bell"></i>
+                    <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+                    <i class="fas fa-caret-down" style="margin-left: 5px; font-size: 14px;"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="notification-modal">
+        <div class="notification-modal-content">
+            <div class="notification-header">
+                <h3 style="margin: 0;"><i class="fas fa-bell"></i> Notifications</h3>
+                <div>
+                    <button id="markAllRead" class="mark-all-read">Mark all as read</button>
+                    <span class="notification-close">&times;</span>
+                </div>
+            </div>
+            <ul id="notificationList" class="notification-list">
+                <li class="notification-empty">Loading notifications...</li>
+            </ul>
         </div>
     </div>
 
     <div class="main-container">
         {% block content %}{% endblock %}
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded - initializing notification system');
+            const notificationBtn = document.getElementById('notificationBtn');
+            const notificationModal = document.getElementById('notificationModal');
+            const notificationBadge = document.getElementById('notificationBadge');
+            const notificationList = document.getElementById('notificationList');
+            const markAllReadBtn = document.getElementById('markAllRead');
+            const closeBtn = document.querySelector('.notification-close');
+            
+            // Debug all elements
+            console.log('Notification button element:', notificationBtn);
+            console.log('Notification modal element:', notificationModal);
+            console.log('Notification badge element:', notificationBadge);
+            console.log('Notification list element:', notificationList);
+            
+            // Open notification modal when button is clicked
+            notificationBtn.addEventListener('click', function(event) {
+                console.log('Notification button clicked');
+                event.preventDefault();
+                event.stopPropagation(); // Prevent event from bubbling up
+                
+                // Open modal with flex display
+                notificationModal.style.display = 'flex';
+                
+                // Load notifications when modal is opened
+                loadNotifications();
+            });
+            
+            // Close modal when X is clicked
+            closeBtn.addEventListener('click', function() {
+                console.log('Close button clicked');
+                notificationModal.style.display = 'none';
+            });
+            
+            // Close modal when clicking outside the modal content
+            window.addEventListener('click', function(event) {
+                if (event.target === notificationModal) {
+                    console.log('Closing modal - clicked outside');
+                    notificationModal.style.display = 'none';
+                }
+            });
+            
+            // Mark all notifications as read
+            markAllReadBtn.addEventListener('click', function() {
+                console.log('Marking all notifications as read');
+                fetch('/api/mark_all_notifications_read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('All notifications marked as read');
+                        loadNotifications();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error marking notifications as read:', error);
+                });
+            });
+            
+            // Mark a single notification as read
+            function markAsRead(notificationId) {
+                console.log('Marking notification as read:', notificationId);
+                fetch(`/api/mark_notification_read/${notificationId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Notification marked as read');
+                        loadNotifications();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error marking notification as read:', error);
+                });
+            }
+            
+            // Load notifications from API
+            function loadNotifications() {
+                console.log('Loading notifications...');
+                
+                // Add a test notification if the API fails or returns nothing
+                function addTestNotification() {
+                    console.log('Adding test notification');
+                    notificationList.innerHTML = '';
+                    const testItem = document.createElement('li');
+                    testItem.className = 'notification-item unread';
+                    testItem.innerHTML = `
+                        <div class="notification-message">This is a test notification to ensure the system is working.</div>
+                        <div class="notification-time">Just now</div>
+                    `;
+                    notificationList.appendChild(testItem);
+                    
+                    // Force unread counter to show
+                    notificationBadge.style.display = 'inline-block';
+                    notificationBadge.textContent = '1';
+                }
+                
+                fetch('/api/get_notifications')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Notifications loaded:', data);
+                        const notifications = data.notifications;
+                        const unreadCount = data.unread_count;
+                        
+                        // Update badge
+                        if (unreadCount > 0) {
+                            console.log('Showing badge with count:', unreadCount);
+                            notificationBadge.style.display = 'inline-block';
+                            notificationBadge.textContent = unreadCount;
+                            
+                            // Add animation to bell icon
+                            document.getElementById('bellIcon').classList.add('has-unread');
+                        } else {
+                            console.log('No unread notifications, hiding badge');
+                            notificationBadge.style.display = 'none';
+                            
+                            // Remove animation from bell icon
+                            document.getElementById('bellIcon').classList.remove('has-unread');
+                        }
+                        
+                        // Update notification list
+                        if (!notifications || notifications.length === 0) {
+                            console.log('No notifications to display');
+                            notificationList.innerHTML = '<li class="notification-empty">No notifications</li>';
+                        } else {
+                            console.log('Displaying', notifications.length, 'notifications');
+                            notificationList.innerHTML = '';
+                            notifications.forEach(notification => {
+                                const item = document.createElement('li');
+                                item.className = notification.is_read ? 'notification-item' : 'notification-item unread';
+                                item.innerHTML = `
+                                    <div class="notification-message">${notification.message}</div>
+                                    <div class="notification-time">${notification.created_at}</div>
+                                `;
+                                item.addEventListener('click', function() {
+                                    if (!notification.is_read) {
+                                        markAsRead(notification.id);
+                                    }
+                                });
+                                notificationList.appendChild(item);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading notifications:', error);
+                        addTestNotification();
+                    });
+            }
+            
+            // Check for notifications on page load
+            console.log('Checking for notifications on page load');
+            loadNotifications();
+            
+            // Set interval to refresh notifications
+            console.log('Setting up auto-refresh for notifications');
+            setInterval(loadNotifications, 60000); // Refresh every minute
+        });
+    </script>
 </body>
 </html>

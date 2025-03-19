@@ -94,71 +94,29 @@
     text-align: center;
     margin-top: 10px;
 }
-.popup {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-    display: none; /* Initially hidden */
-    z-index: 1000;
-    min-width: 200px;
-}
-.popup-content {
-    text-align: center;
-}
-.popup p {
-    margin: 10px 0;
-    font-size: 16px;
-}
-.popup button {
-    margin-top: 10px;
-    padding: 8px 15px;
-    border: none;
-    background: red;
-    color: white;
-    cursor: pointer;
-    border-radius: 5px;
-    font-size: 14px;
-}
 
 </style>
-{% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div id="message-popup" class="popup">
-                    <div class="popup-content">
-                        {% for category, message in messages %}
-                            <p class="{{ category }}">{{ message }}</p>
-                        {% endfor %}
-                        <button id="close-popup">OK</button>
-                    </div>
-                </div>
-            {% endif %}
-        {% endwith %}
-        <div class="profile-container">
-            <div class="w3-container w3-margin" style="width: 30%;">
-                <div class="w3-modal-content w3-card-4" style="width: 100%; border-radius: 10px;">
-                    <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
-                        <h2 class="w3-margin"><b>PROFILE</b></h2>
-                    </header>
-                    <div class="container w3-margin w3-padding">
-                        <center>
-                            <img src="static/images/default_user.png" alt="Profile Picture" style="width: 100px; height: 100px; border-radius: 50%;" class="w3-margin">
-                        </center>
-                        <p><strong>ID No:</strong> {{ user.idno }}</p>
-                        <p><strong>Name:</strong> {{ user.firstname }} {{ user.middlename }} {{ user.lastname }}</p>
-                        <p><strong>Course:</strong> {{ user.course }}</p>
-                        <p><strong>Year Level:</strong> {{ user.yearlevel }}</p>
-                        <p><strong>Email:</strong> {{ user.email }}</p>
-                        <p><strong>Remaining Session:</strong> {{ user.remaining_sessions }}</p>
-                        <center><button class="edit-btn w3-margin"><b>Edit Profile</b></button></center>
-                    </div>
-                </div>
+<div class="profile-container">
+    <div class="w3-container w3-margin" style="width: 30%;">
+        <div class="w3-modal-content w3-card-4" style="width: 100%; border-radius: 10px;">
+            <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+                <h2 class="w3-margin"><b>PROFILE</b></h2>
+            </header>
+            <div class="container w3-margin w3-padding">
+                <center>
+                    <img src="static/images/default_user.png" alt="Profile Picture" style="width: 100px; height: 100px; border-radius: 50%;" class="w3-margin">
+                </center>
+                <p><strong>ID No:</strong> {{ user.idno }}</p>
+                <p><strong>Name:</strong> {{ user.firstname }} {{ user.middlename }} {{ user.lastname }}</p>
+                <p><strong>Course:</strong> {{ user.course }}</p>
+                <p><strong>Year Level:</strong> {{ user.yearlevel }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Remaining Session:</strong> {{ user.remaining_sessions }}</p>
+                <center><button class="edit-btn w3-margin"><b>Edit Profile</b></button></center>
             </div>
         </div>
+    </div>
+</div>
         
         
 <div id="editModal" class="modal">
@@ -234,16 +192,6 @@
                 modal.style.display = "none";
             }
         });
-
-        var popup = document.getElementById("message-popup");
-        if (popup) {
-            popup.style.display = "block";
-            
-            document.getElementById("close-popup").addEventListener("click", function() {
-                popup.style.display = "none";
-            });
-        }
     });
-
 </script>
 {% endblock %}

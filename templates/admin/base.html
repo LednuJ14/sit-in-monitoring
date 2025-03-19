@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #0047ab;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+            padding: 0;
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-link {
+            color: white !important;
+            text-decoration: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .nav-link i {
+            margin-right: 8px;
+            width: 16px;
+            text-align: center;
+        }
+        .nav-link .tooltip {
+            visibility: hidden;
+            background-color: black;
+            color: white;
+            text-align: center;
+            padding: 5px 10px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 1;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .nav-link .tooltip::after {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent black transparent;
+        }
+        .nav-link:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .content {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 25px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: #0047ab;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="navbar">
+        <h2 class="navbar-brand w3-bar-item"><b>College of Computer Studies Admin</b></h2>
+        <div class="nav-links">
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.path == url_for('admin_dashboard') %}active{% endif %}">
+                HOME
+            </a>
+            <a href="{{ url_for('admin_student_search') }}" class="nav-link {% if request.path == url_for('admin_student_search') %}active{% endif %}">
+                SEARCH
+                <span class="tooltip">Search student and manage sit-ins</span>
+            </a>
+            <a href="{{ url_for('admin_students') }}" class="nav-link {% if request.path == url_for('admin_students') %}active{% endif %}">
+                STUDENTS
+                <span class="tooltip">Manage student accounts and information</span>
+            </a>
+            <a href="{{ url_for('admin_sit_in_records') }}" class="nav-link {% if request.path == url_for('admin_sit_in_records') %}active{% endif %}">
+                VIEW SIT-IN RECORDS
+                <span class="tooltip">View and manage sit-in sessions</span>
+            </a>
+            <a href="{{ url_for('admin_feedback') }}" class="nav-link {% if request.path == url_for('admin_feedback') %}active{% endif %}">
+                FEEDBACK
+                <span class="tooltip">View and respond to student feedback</span>
+            </a>
+            <a href="{{ url_for('admin_reservation_requests') }}" class="nav-link {% if request.path == url_for('admin_reservation_requests') %}active{% endif %}">
+                RESERVATIONS
+                <span class="tooltip">Approve or deny student reservation requests</span>
+            </a>
+            <a href="{{ url_for('home') }}" class="nav-link">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="w3-panel w3-{{ 'green' if category == 'success' else 'red' }} w3-padding">
+                        <p>{{ message }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Student Search Modal -->
+    <div id="searchStudentModal" class="w3-modal">
+        <div class="w3-modal-content w3-card-4 w3-animate-zoom w3-round-large" style="max-width:500px">
+            <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 8px 8px 0 0;">
+                <span onclick="document.getElementById('searchStudentModal').style.display='none'" 
+                    class="w3-button w3-display-topright w3-margin">&times;</span>
+                <h2> Search Student</h2>
+            </header>
+
+            <form id="searchStudentForm" class="w3-container w3-padding-16">
+                <div class="w3-section">
+                    <label><b>Student ID</b></label>
+                    <input class="w3-input w3-border" type="text" name="student_id" id="student_id" required>
+                </div>
+                <button type="submit" class="w3-button w3-block w3-blue w3-round-large">Search</button>
+            </form>
+            
+            <div id="searchResult" class="w3-container w3-padding-16" style="display:none;">
+                <div class="w3-panel w3-pale-blue w3-leftbar w3-border-blue">
+                    <p>Student found: <span id="studentName">-</span></p>
+                    <p>Course: <span id="studentCourse">-</span></p>
+                    <button onclick="openSitInForm()" class="w3-button w3-blue w3-round-large">Create Sit-in</button>
+                </div>
+            </div>
+            
+            <div id="noResult" class="w3-container w3-padding-16" style="display:none;">
+                <div class="w3-panel w3-pale-red w3-leftbar w3-border-red">
+                    <p>No student found with that ID.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sit-in Form Modal -->
+    <div id="sitInFormModal" class="w3-modal">
+        <div class="w3-modal-content w3-card-4 w3-animate-zoom" style="max-width:600px">
+            <header class="w3-container w3-blue">
+                <span onclick="document.getElementById('sitInFormModal').style.display='none'" 
+                    class="w3-button w3-display-topright">&times;</span>
+                <h2><i class="fas fa-user-clock"></i> Sit-in Form</h2>
+            </header>
+
+            <form id="sitInForm" class="w3-container w3-padding-16">
+                <div class="w3-row-padding">
+                    <div class="w3-half">
+                        <div class="w3-section">
+                            <label><b>ID Number:</b></label>
+                            <input class="w3-input w3-border" type="text" id="sit_in_student_id" name="student_id" readonly>
+                        </div>
+                    </div>
+                    <div class="w3-half">
+                        <div class="w3-section">
+                            <label><b>Student Name:</b></label>
+                            <input class="w3-input w3-border" type="text" id="sit_in_student_name" name="student_name" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w3-section">
+                    <label><b>Purpose:</b></label>
+                    <select class="w3-select w3-border" name="purpose" id="sit_in_purpose" required>
+                        <option value="" disabled selected>Select Purpose</option>
+                        <option value="C">C Programming</option>
+                        <option value="C#">C# Programming</option>
+                        <option value="Java">Java Programming</option>
+                        <option value="ASP.Net">ASP.NET</option>
+                        <option value="PHP">PHP Programming</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="w3-section">
+                    <label><b>Lab:</b></label>
+                    <select class="w3-select w3-border" name="lab" id="sit_in_lab" required>
+                        <option value="" disabled selected>Select Lab Room</option>
+                        <option value="524">524</option>
+                        <option value="526">526</option>
+                        <option value="528">528</option>
+                        <option value="530">530</option>
+                        <option value="542">542</option>
+                        <option value="544">544</option>
+                        
+                    </select>
+                </div>
+
+                <div class="w3-panel w3-pale-blue w3-leftbar w3-border-blue">
+                    <p><b>Remaining Sessions:</b> <span id="remaining_sessions">0</span></p>
+                </div>
+
+                <button type="submit" class="w3-button w3-block w3-blue">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    {% block scripts %}{% endblock %}
+    <script>
+        // Show search modal when clicking the SEARCH nav link
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the search link from the navigation
+            const searchLink = document.querySelector('a.nav-link[href="{{ url_for("admin_student_search") }}"]');
+            
+            // Add click event listener to show modal instead of navigating
+            if (searchLink) {
+                searchLink.addEventListener('click', function(e) {
+                    e.preventDefault(); // Prevent default navigation
+                    document.getElementById('searchStudentModal').style.display = 'block';
+                });
+            }
+            
+            // Search form handling
+            document.getElementById('searchStudentForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const studentId = document.getElementById('student_id').value;
+                
+                // Simulate search - Replace with actual AJAX call to backend
+                fetch(`/api/search_student?id=${studentId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.found) {
+                            document.getElementById('studentName').textContent = data.name;
+                            document.getElementById('studentCourse').textContent = data.course;
+                            document.getElementById('searchResult').style.display = 'block';
+                            document.getElementById('noResult').style.display = 'none';
+                            
+                            // Store student data for sit-in form
+                            window.studentData = {
+                                id: studentId,
+                                name: data.name,
+                                course: data.course,
+                                remaining_sessions: data.remaining_sessions || 0
+                            };
+                        } else {
+                            document.getElementById('searchResult').style.display = 'none';
+                            document.getElementById('noResult').style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error searching for student:', error);
+                    });
+            });
+            
+            // Sit-in form handling
+            document.getElementById('sitInForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    student_id: document.getElementById('sit_in_student_id').value,
+                    purpose: document.getElementById('sit_in_purpose').value,
+                    lab: document.getElementById('sit_in_lab').value
+                };
+                
+                // Submit sit-in data to backend
+                fetch('/api/create_sit_in', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Close modal and show success message
+                        document.getElementById('sitInFormModal').style.display = 'none';
+                        alert('Sit-in created successfully!');
+                        // Reload page or update UI as needed
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error creating sit-in:', error);
+                    alert('An error occurred while creating the sit-in.');
+                });
+            });
+        });
+        
+        // Function to open sit-in form and pre-fill data
+        function openSitInForm() {
+            document.getElementById('searchStudentModal').style.display = 'none';
+            document.getElementById('sitInFormModal').style.display = 'block';
+            
+            // Pre-fill student info in sit-in form
+            if (window.studentData) {
+                document.getElementById('sit_in_student_id').value = window.studentData.id;
+                document.getElementById('sit_in_student_name').value = window.studentData.name;
+                document.getElementById('remaining_sessions').textContent = window.studentData.remaining_sessions;
+            }
+        }
+    </script>
+</body>
+</html> 

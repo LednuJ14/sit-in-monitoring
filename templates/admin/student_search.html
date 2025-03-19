@@ -1,0 +1,560 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Search Student{% endblock %}
+
+{% block head %}
+<style>
+    .search-container {
+        max-width: 600px;
+        margin: 0 auto 30px;
+    }
+    .search-form {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    .search-results {
+        margin-top: 30px;
+    }
+    .student-card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .student-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+    .student-basic-info {
+        flex: 2;
+    }
+    .student-stats {
+        flex: 1;
+        text-align: right;
+    }
+    .student-name {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .student-id {
+        font-size: 14px;
+        color: #6c757d;
+        margin-bottom: 10px;
+    }
+    .student-stats-item {
+        font-size: 14px;
+        margin-bottom: 5px;
+    }
+    .student-stats-value {
+        font-weight: bold;
+        color: #0047ab;
+    }
+    .student-active {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .actions {
+        border-top: 1px solid #eee;
+        padding-top: 15px;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    .no-results {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        padding: 20px;
+        text-align: center;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-search"></i> Search Student</h2>
+        <p class="text-muted">Search for students and manage their sit-in sessions.</p>
+    </div>
+
+    <div class="search-container">
+        <div class="search-form">
+            <form id="studentSearchForm">
+                <div class="w3-row-padding">
+                    <div class="w3-col l10 m9 s8">
+                        <input type="text" name="student_id" id="student_id_input" class="w3-input w3-border" 
+                               placeholder="Enter Student ID" value="{{ request.args.get('student_id', '') }}" required>
+                    </div>
+                    <div class="w3-col l2 m3 s4">
+                        <button type="submit" class="w3-button w3-blue w3-block">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                <div class="w3-row-padding w3-margin-top">
+                    <div class="w3-col">
+                        <div class="w3-panel w3-pale-blue">
+                            <p><i class="fas fa-info-circle"></i> Enter a student ID to search for a student and manage their sit-in sessions.</p>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="search-results" id="searchResults">
+            <!-- Results will be shown here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Student search form submission
+    document.getElementById('studentSearchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const studentId = document.getElementById('student_id_input').value.trim();
+        if (!studentId) {
+            alert('Please enter a student ID');
+            return;
+        }
+
+        console.log('Searching for student with ID:', studentId);
+
+        // Clear previous results
+        document.getElementById('searchResults').innerHTML = '<div class="w3-center w3-padding"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+        
+        // Call the search API
+        fetch(`/api/search_student?id=${encodeURIComponent(studentId)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Search response:', data);
+                const resultsContainer = document.getElementById('searchResults');
+                
+                if (data.found) {
+                    // Store student data for sit-in form
+                    window.studentData = {
+                        id: data.id,
+                        name: data.name,
+                        course: data.course,
+                        remaining_sessions: data.remaining_sessions
+                    };
+                    
+                    // Create student card
+                    resultsContainer.innerHTML = `
+                        <div class="student-card">
+                            <div class="student-info">
+                                <div class="student-basic-info">
+                                    <div class="student-name">${data.name}</div>
+                                    <div class="student-id">${data.id}</div>
+                                    <div>Course: <b>${data.course}</b></div>
+                                    <div>Year Level: <b>${data.year_level}</b></div>
+                                    <div>Email: <b>${data.email}</b></div>
+                                </div>
+                                <div class="student-stats">
+                                    <div class="student-stats-item">
+                                        Remaining Sessions: <span class="student-stats-value">${data.remaining_sessions}</span>
+                                    </div>
+                                    <div id="activeSessionStatus"></div>
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button onclick="openCreateSitInForm()" class="w3-button w3-blue">
+                                    <i class="fas fa-user-clock"></i> Create Sit-in
+                                </button>
+                                <a href="{{ url_for('admin_sit_in_records') }}?student_id=${data.id}" class="w3-button w3-indigo">
+                                    <i class="fas fa-history"></i> View Student Records
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Sit-in Creation Form -->
+                        <div id="sitInCreationForm" class="w3-modal">
+                            <div class="w3-modal-content w3-card-4 w3-animate-zoom" style="max-width: 600px">
+                                <header class="w3-container w3-blue">
+                                    <span onclick="document.getElementById('sitInCreationForm').style.display='none'" class="w3-button w3-display-topright">&times;</span>
+                                    <h2><i class="fas fa-user-clock"></i> Create Sit-in Session</h2>
+                                </header>
+                                
+                                <form id="createSitInForm" class="w3-container w3-padding-16">
+                                    <div class="w3-row-padding">
+                                        <div class="w3-half">
+                                            <label><b>Student ID:</b></label>
+                                            <input class="w3-input w3-border" type="text" value="${data.id}" readonly>
+                                        </div>
+                                        <div class="w3-half">
+                                            <label><b>Student Name:</b></label>
+                                            <input class="w3-input w3-border" type="text" value="${data.name}" readonly>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="w3-section">
+                                        <label><b>Purpose:</b></label>
+                                        <select class="w3-select w3-border" id="sit_in_purpose" name="purpose" required>
+                                            <option value="" disabled selected>Choose purpose</option>
+                                            <option value="C">C Programming</option>
+                                            <option value="C#">C# Programming</option>
+                                            <option value="Java">Java Programming</option>
+                                            <option value="ASP.NET">ASP.NET</option>
+                                            <option value="PHP">PHP Programming</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="w3-section">
+                                        <label><b>Lab Room:</b></label>
+                                        <select class="w3-select w3-border" id="sit_in_lab" name="lab" required>
+                                            <option value="" disabled selected>Choose lab room</option>
+                                            <option value="524">524</option>
+                                            <option value="526">526</option>
+                                            <option value="528">528</option>
+                                            <option value="530">530</option>
+                                            <option value="542">542</option>
+                                            <option value="544">544</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="w3-section">
+                                        <button type="submit" class="w3-button w3-blue w3-block">
+                                            <i class="fas fa-save"></i> Create Sit-in
+                                        </button>
+                                    </div>
+                                </form>
+                                
+                                <div class="w3-container w3-border-top w3-padding-16 w3-light-grey">
+                                    <button type="button" onclick="document.getElementById('sitInCreationForm').style.display='none'" class="w3-button w3-red">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Check if student has active session
+                    checkActiveSession(data.id);
+                    
+                    // Add event listener for the sit-in form
+                    document.getElementById('createSitInForm').addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        
+                        const formData = {
+                            student_id: data.id,
+                            purpose: document.getElementById('sit_in_purpose').value,
+                            lab: document.getElementById('sit_in_lab').value
+                        };
+                        
+                        fetch('/api/create_sit_in', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(formData)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                document.getElementById('sitInCreationForm').style.display = 'none';
+                                alert('Sit-in created successfully!');
+                                window.location.reload();
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error creating sit-in:', error);
+                            alert('An error occurred while creating the sit-in.');
+                        });
+                    });
+                } else {
+                    // Enhanced error display with debug info
+                    let debugInfoHtml = '';
+                    if (data.debug_info) {
+                        debugInfoHtml = `
+                            <div class="w3-panel w3-pale-yellow w3-leftbar w3-border-yellow">
+                                <h4>Debugging Information</h4>
+                                <p>Searched ID: <code>${data.debug_info.searched_id}</code> (Type: ${data.debug_info.id_type})</p>
+                                <p>Match Results:</p>
+                                <ul>
+                                    <li>Exact match: ${data.debug_info.has_exact_match ? '<span class="w3-text-green">Found</span>' : '<span class="w3-text-red">Not Found</span>'}</li>
+                                    <li>Case-insensitive match: ${data.debug_info.has_case_insensitive ? '<span class="w3-text-green">Found</span>' : '<span class="w3-text-red">Not Found</span>'}</li>
+                                    <li>Partial match: ${data.debug_info.has_partial_match ? '<span class="w3-text-green">Found</span>' : '<span class="w3-text-red">Not Found</span>'}</li>
+                                </ul>
+                                <p class="w3-small">Note: Please check the server console for more detailed logs. This information can help identify why the search is failing.</p>
+                            </div>
+                        `;
+                    }
+                    
+                    // Add Try Different Formats section
+                    const tryFormatsHtml = `
+                        <div class="w3-panel w3-pale-blue w3-leftbar w3-border-blue">
+                            <h4>Try Different ID Formats</h4>
+                            <p>The student ID might be stored in a different format. Try these common variations:</p>
+                            <div class="w3-bar">
+                                <button class="w3-button w3-tiny w3-blue w3-round" onclick="trySearch('${studentId}')">Original: ${studentId}</button>
+                                <button class="w3-button w3-tiny w3-blue w3-round" onclick="trySearch('${studentId.padStart(8, '0')}')">With Leading Zeros: ${studentId.padStart(8, '0')}</button>
+                                <button class="w3-button w3-tiny w3-blue w3-round" onclick="trySearch('${studentId.replace(/^(\d{4})(\d{4})$/, '$1-$2')}')">Hyphenated: ${studentId.replace(/^(\d{4})(\d{4})$/, '$1-$2')}</button>
+                            </div>
+                            <p class="w3-small">Click any button to try that format</p>
+                        </div>
+                        <div class="w3-panel w3-pale-green w3-leftbar w3-border-green">
+                            <h4>Advanced Debug</h4>
+                            <p>For more detailed information about database records:</p>
+                            <button class="w3-button w3-green w3-round" onclick="debugSearch('${studentId}')">Run Advanced Diagnostics</button>
+                            <div id="advancedDebugResults" class="w3-container w3-padding w3-margin-top" style="display:none; max-height: 500px; overflow-y: auto;"></div>
+                        </div>
+                    `;
+                    
+                    resultsContainer.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-user-slash" style="font-size: 48px; color: #dee2e6; margin-bottom: 15px;"></i>
+                            <h3>No Results Found</h3>
+                            <p>No student found with ID "${studentId}". Please check the ID and try again.</p>
+                            <p class="w3-small">Possible issues:</p>
+                            <ul class="w3-small">
+                                <li>ID format may not match the database format (e.g., with/without leading zeros)</li>
+                                <li>The student ID may not exist in the database</li>
+                                <li>There might be special characters or spaces in the ID</li>
+                                <li>The database connection may have issues</li>
+                            </ul>
+                            ${tryFormatsHtml}
+                            ${debugInfoHtml}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error searching for student:', error);
+                document.getElementById('searchResults').innerHTML = `
+                    <div class="w3-panel w3-red">
+                        <p><i class="fas fa-exclamation-circle"></i> An error occurred while searching: ${error.message}</p>
+                        <p>Please try again or contact system administrator if the problem persists.</p>
+                    </div>
+                `;
+            });
+    });
+    
+    // If student ID is in URL query param, trigger search automatically
+    const urlParams = new URLSearchParams(window.location.search);
+    const studentId = urlParams.get('student_id');
+    if (studentId) {
+        document.getElementById('student_id_input').value = studentId;
+        document.getElementById('studentSearchForm').dispatchEvent(new Event('submit'));
+    }
+});
+
+// Function to check if student has an active session
+function checkActiveSession(studentId) {
+    // This would normally be an API call, but for now we'll simulate it
+    fetch(`/api/check_active_session?student_id=${studentId}`)
+        .then(response => response.json())
+        .then(data => {
+            const statusElement = document.getElementById('activeSessionStatus');
+            
+            if (data.active) {
+                statusElement.innerHTML = `
+                    <div class="student-stats-item">
+                        Status: <span class="student-active">Currently active</span>
+                    </div>
+                    <div class="student-stats-item">
+                        Location: <span class="student-stats-value">${data.lab_room}</span>
+                    </div>
+                    <div class="student-stats-item">
+                        Since: <span class="student-stats-value">${new Date(data.start_time).toLocaleTimeString()}</span>
+                    </div>
+                `;
+            } else {
+                statusElement.innerHTML = `
+                    <div class="student-stats-item">
+                        Status: <span class="student-stats-value">No active session</span>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error checking active session:', error);
+            document.getElementById('activeSessionStatus').innerHTML = `
+                <div class="student-stats-item">
+                    Status: <span class="student-stats-value">Unknown</span>
+                </div>
+            `;
+        });
+}
+
+// Function to open the sit-in creation form
+function openCreateSitInForm() {
+    document.getElementById('sitInCreationForm').style.display = 'block';
+}
+
+// Function to try different search formats
+function trySearch(idToSearch) {
+    document.getElementById('student_id_input').value = idToSearch;
+    document.getElementById('studentSearchForm').dispatchEvent(new Event('submit'));
+}
+
+// Function to run advanced diagnostics
+function debugSearch(idToSearch) {
+    const debugResultsContainer = document.getElementById('advancedDebugResults');
+    debugResultsContainer.innerHTML = '<div class="w3-center w3-padding"><i class="fas fa-spinner fa-spin"></i> Running diagnostics...</div>';
+    debugResultsContainer.style.display = 'block';
+    
+    fetch(`/api/debug/search_student?id=${encodeURIComponent(idToSearch)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status} ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Debug search response:', data);
+            
+            if (data.error) {
+                debugResultsContainer.innerHTML = `
+                    <div class="w3-panel w3-red">
+                        <p>Error: ${data.error}</p>
+                        <pre style="overflow-x: auto;">${data.traceback || ''}</pre>
+                    </div>
+                `;
+                return;
+            }
+            
+            const debug = data.debug_info;
+            const tableStructure = debug.users_table_structure || [];
+            const idField = tableStructure.find(field => field.Field === 'idno') || {};
+            
+            let matchResults = `
+                <div class="w3-section">
+                    <h5>ID Match Tests:</h5>
+                    <ul>
+                        <li>Exact match: ${debug.exact_match_found ? '<span class="w3-text-green">Found</span>' : '<span class="w3-text-red">Not Found</span>'}</li>
+                        <li>String format match: ${debug.string_match_found ? '<span class="w3-text-green">Found</span>' : '<span class="w3-text-red">Not Found</span>'}</li>
+                        <li>Padded match (with leading zeros): ${debug.padded_match_found ? '<span class="w3-text-green">Found</span>' : '<span class="w3-text-red">Not Found</span>'}</li>
+                        <li>Integer match: ${debug.int_match_found ? '<span class="w3-text-green">Found</span>' : '<span class="w3-text-red">Not Found</span>'}</li>
+                    </ul>
+                </div>
+            `;
+            
+            let sampleIdsHtml = '<p>No sample IDs found</p>';
+            if (debug.all_ids_sample && debug.all_ids_sample.length > 0) {
+                sampleIdsHtml = `
+                    <div class="w3-responsive">
+                        <table class="w3-table w3-bordered w3-striped">
+                            <thead>
+                                <tr class="w3-blue">
+                                    <th>ID From Database</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${debug.all_ids_sample.map(id => `
+                                    <tr>
+                                        <td><code>${id}</code></td>
+                                        <td>
+                                            <button class="w3-button w3-tiny w3-blue w3-round" 
+                                                    onclick="trySearch('${id}')">
+                                                Try This ID
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            let closeMatchesHtml = '<p>No close matches found</p>';
+            if (debug.close_matches && debug.close_matches.length > 0) {
+                closeMatchesHtml = `
+                    <h5>Possible Matches:</h5>
+                    <div class="w3-responsive">
+                        <table class="w3-table w3-bordered w3-striped">
+                            <thead>
+                                <tr class="w3-green">
+                                    <th>Similar ID</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${debug.close_matches.map(id => `
+                                    <tr>
+                                        <td><code>${id}</code></td>
+                                        <td>
+                                            <button class="w3-button w3-tiny w3-green w3-round" 
+                                                    onclick="trySearch('${id}')">
+                                                Try This ID
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            let dbStructureHtml = `
+                <div class="w3-section">
+                    <h5>Database Information:</h5>
+                    <table class="w3-table w3-bordered">
+                        <tr>
+                            <td><strong>Database Version:</strong></td>
+                            <td>${debug.database_version ? debug.database_version.version : 'Unknown'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ID Field Type in Database:</strong></td>
+                            <td>${idField.Type || 'Unknown'}</td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+            
+            debugResultsContainer.innerHTML = `
+                <div class="w3-container">
+                    <h4>Diagnostic Results for ID: "${debug.searched_id}"</h4>
+                    
+                    ${matchResults}
+                    
+                    <div class="w3-section">
+                        <h5>Close Matches:</h5>
+                        ${closeMatchesHtml}
+                    </div>
+                    
+                    <div class="w3-section">
+                        <h5>Sample IDs from Database:</h5>
+                        ${sampleIdsHtml}
+                    </div>
+                    
+                    ${dbStructureHtml}
+                    
+                    <div class="w3-section w3-center">
+                        <button class="w3-button w3-red" onclick="document.getElementById('advancedDebugResults').style.display='none'">
+                            Close Results
+                        </button>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Error running diagnostics:', error);
+            debugResultsContainer.innerHTML = `
+                <div class="w3-panel w3-red">
+                    <p><i class="fas fa-exclamation-circle"></i> An error occurred while running diagnostics: ${error.message}</p>
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %} 

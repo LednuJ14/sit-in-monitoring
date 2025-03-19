@@ -1,0 +1,390 @@
+{% extends "student/base.html" %}
+
+{% block title %}Session History{% endblock %}
+
+{% block content %}
+<style>
+    .history-container {
+        width: 90%;
+        margin: 30px auto;
+        padding: 20px;
+    }
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+    .card-header {
+        background-color: #0047ab;
+        color: white;
+        padding: 15px;
+        border-radius: 10px 10px 0 0;
+    }
+    .card-body {
+        padding: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    tr:hover {
+        background-color: #f9f9f9;
+    }
+    .active-session {
+        background-color: #e8f4f8;
+    }
+    .btn {
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        border: none;
+    }
+    .btn-end {
+        background-color: #dc3545;
+        color: white;
+    }
+    .btn-end:hover {
+        background-color: #c82333;
+    }
+    .no-sessions {
+        padding: 20px;
+        text-align: center;
+        color: #666;
+        font-style: italic;
+    }
+    .active-session-card {
+        background-color: #e8f4f8;
+        border-left: 5px solid #0047ab;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+    .active-info {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+    .active-info-item {
+        margin-bottom: 10px;
+        flex-basis: 48%;
+    }
+    .active-label {
+        font-weight: bold;
+        color: #555;
+    }
+    .end-session-btn {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 15px;
+    }
+    .end-session-btn:hover {
+        background-color: #c82333;
+    }
+    .feedback-btn {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: background-color 0.3s;
+    }
+    .feedback-btn:hover {
+        background-color: #2980b9;
+    }
+</style>
+
+<div class="history-container">
+    <!-- Active Session Card -->
+    {% if active_session %}
+    <div class="card">
+        <div class="card-header">
+            <h2><b>ACTIVE SESSION</b></h2>
+        </div>
+        <div class="card-body">
+            <div class="active-session-card">
+                <div class="active-info">
+                    <div class="active-info-item">
+                        <span class="active-label">Laboratory:</span>
+                        <span>{{ active_session.lab_room }}</span>
+                    </div>
+                    <div class="active-info-item">
+                        <span class="active-label">Purpose:</span>
+                        <span>{{ active_session.purpose }}</span>
+                    </div>
+                    <div class="active-info-item">
+                        <span class="active-label">Start Time:</span>
+                        <span>{{ active_session.start_time.strftime('%I:%M %p') }}</span>
+                    </div>
+                    <div class="active-info-item">
+                        <span class="active-label">Date:</span>
+                        <span>{{ active_session.start_time.strftime('%B %d, %Y') }}</span>
+                    </div>
+                    <div class="active-info-item">
+                        <span class="active-label">Duration:</span>
+                        <span id="duration">Calculating...</span>
+                    </div>
+                </div>
+                <form action="{{ url_for('end_student_session', session_id=active_session.id) }}" method="POST">
+                    <button type="submit" class="end-session-btn">End Session</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- History Card -->
+    <div class="card">
+        <div class="card-header">
+            <h2><b>SESSION HISTORY</b></h2>
+        </div>
+        <div class="card-body">
+            {% if sessions %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Laboratory</th>
+                        <th>Purpose</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Feedback</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in sessions %}
+                    <tr {% if session.end_time is none and session.status == 'approved' %}class="active-session"{% endif %}>
+                        <td>{{ session.start_time.strftime('%B %d, %Y') }}</td>
+                        <td>{{ session.lab_room }}</td>
+                        <td>{{ session.purpose }}</td>
+                        <td>{{ session.start_time.strftime('%I:%M %p') }}</td>
+                        <td>
+                            {% if session.end_time %}
+                                {{ session.end_time.strftime('%I:%M %p') }}
+                            {% elif session.status == 'approved' %}
+                                Active
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if session.end_time %}
+                                {{ ((session.end_time - session.start_time).total_seconds() / 60)|int }} mins
+                            {% elif session.status == 'approved' %}
+                                -
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if session.status == 'pending' %}
+                                <span style="color: #f39c12; font-weight: bold;">Pending Approval</span>
+                            {% elif session.status == 'approved' %}
+                                <span style="color: #27ae60; font-weight: bold;">Approved</span>
+                                {% if session.admin_notes %}
+                                    <br><small style="color: #7f8c8d;">Note: {{ session.admin_notes }}</small>
+                                {% endif %}
+                            {% elif session.status == 'rejected' %}
+                                <span style="color: #e74c3c; font-weight: bold;">Denied</span>
+                                {% if session.admin_notes %}
+                                    <br><small style="color: #7f8c8d;">Reason: {{ session.admin_notes }}</small>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if session.end_time and session.status == 'approved' %}
+                                <button class="btn feedback-btn" data-session-id="{{ session.id }}">
+                                    <i class="fas fa-comment"></i> Feedback
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-sessions">
+                <p>You have no session history yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Modal -->
+<div id="feedbackModal" class="w3-modal">
+    <div class="w3-modal-content w3-card-4 w3-animate-zoom" style="max-width:600px; border-radius: 10px;">
+        <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+            <span onclick="document.getElementById('feedbackModal').style.display='none'" 
+                class="w3-button w3-display-topright">&times;</span>
+            <h2><i class="fas fa-comment"></i> Session Feedback</h2>
+        </header>
+        <form id="feedbackForm" class="w3-container w3-padding-16">
+            <input type="hidden" id="session_id" name="session_id">
+            
+            <div class="w3-section">
+                <label><b>Subject:</b></label>
+                <input class="w3-input w3-border" type="text" name="subject" required>
+            </div>
+            
+            <div class="w3-section">
+                <label><b>Message:</b></label>
+                <textarea class="w3-input w3-border" name="message" rows="5" required></textarea>
+            </div>
+            
+            <div class="w3-section">
+                <button type="submit" class="w3-button w3-block" style="background-color: #0047ab; color: white;">
+                    Submit Feedback
+                </button>
+                <button type="button" onclick="skipFeedback()" class="w3-button w3-block w3-light-grey w3-margin-top">
+                    Skip for now
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if active_session %}
+<script>
+    // Update duration in real-time
+    function updateDuration() {
+        const startTime = new Date('{{ active_session.start_time.isoformat() }}');
+        const now = new Date();
+        const durationMs = now - startTime;
+        const durationMins = Math.floor(durationMs / (1000 * 60));
+        const hours = Math.floor(durationMins / 60);
+        const minutes = durationMins % 60;
+        
+        let durationText = '';
+        if (hours > 0) {
+            durationText += hours + ' hour' + (hours > 1 ? 's' : '') + ' ';
+        }
+        durationText += minutes + ' minute' + (minutes !== 1 ? 's' : '');
+        
+        document.getElementById('duration').textContent = durationText;
+    }
+    
+    // Update duration immediately and then every minute
+    updateDuration();
+    setInterval(updateDuration, 60000);
+</script>
+{% endif %}
+
+<script>
+    // Modify the end session form to show feedback modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const endSessionForm = document.querySelector('form[action*="end_student_session"]');
+        if (endSessionForm) {
+            endSessionForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const sessionId = this.action.split('/').pop();
+                endSession(sessionId);
+            });
+        }
+        
+        // Set up feedback buttons
+        const feedbackButtons = document.querySelectorAll('.feedback-btn');
+        feedbackButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const sessionId = this.getAttribute('data-session-id');
+                showFeedbackModal(sessionId);
+            });
+        });
+        
+        // Set up feedback form submission
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitFeedback();
+        });
+    });
+    
+    function endSession(sessionId) {
+        // Send request to end the session
+        fetch(`/end_student_session/${sessionId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload the page to show the ended session
+                location.reload();
+            } else {
+                alert(data.message || 'Error ending session');
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error ending session');
+            location.reload();
+        });
+    }
+    
+    function showFeedbackModal(sessionId) {
+        document.getElementById('session_id').value = sessionId;
+        document.getElementById('feedbackModal').style.display = 'block';
+    }
+    
+    function submitFeedback() {
+        const formData = {
+            session_id: document.getElementById('session_id').value,
+            subject: document.getElementById('feedbackForm').elements['subject'].value,
+            message: document.getElementById('feedbackForm').elements['message'].value
+        };
+        
+        fetch('/submit_feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Thank you for your feedback!');
+            } else {
+                alert(data.message || 'Error submitting feedback');
+            }
+            document.getElementById('feedbackModal').style.display = 'none';
+            // Clear form fields
+            document.getElementById('feedbackForm').reset();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error submitting feedback');
+            document.getElementById('feedbackModal').style.display = 'none';
+        });
+    }
+    
+    function skipFeedback() {
+        document.getElementById('feedbackModal').style.display = 'none';
+        document.getElementById('feedbackForm').reset();
+    }
+</script>
+{% endblock %} 

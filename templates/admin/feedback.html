@@ -1,0 +1,237 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Student Feedback{% endblock %}
+
+{% block head %}
+<style>
+    .feedback-card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .feedback-metadata {
+        color: #6c757d;
+        font-size: 14px;
+    }
+    .feedback-body {
+        padding: 20px;
+    }
+    .feedback-message {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .feedback-response {
+        margin-top: 20px;
+    }
+    .feedback-response textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        height: 100px;
+        resize: vertical;
+    }
+    .feedback-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 15px;
+    }
+    .feedback-actions button {
+        padding: 8px 16px;
+    }
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .status-pending {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .status-responded {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .feedback-filters {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        align-items: center;
+    }
+    .feedback-filters select {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .no-feedback {
+        text-align: center;
+        padding: 40px 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+    }
+    .no-feedback i {
+        font-size: 48px;
+        color: #6c757d;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feedback-container">
+    <header class="w3-container">
+        <h3><i class="fas fa-comment"></i><b> Student Feedback</b></h3>
+    </header>
+    <div class="w3-panel w3-white">
+        <div class="w3-container w3-padding">
+            {% if feedback_list %}
+                <table class="w3-table w3-striped w3-bordered w3-hoverable">
+                    <thead>
+                        <tr class="w3-blue">
+                            <th>Date</th>
+                            <th>Student</th>
+                            <th>Lab</th>
+                            <th>Subject</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in feedback_list %}
+                        <tr class="{% if not item.is_read %}w3-pale-blue{% endif %}">
+                            <td>{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ item.student_name }}</td>
+                            <td>{{ item.laboratory }}</td>
+                            <td>{{ item.subject }}</td>
+                            <td>
+                                <span class="w3-tag {% if item.is_read %}w3-green{% else %}w3-blue{% endif %}">
+                                    {% if item.is_read %}Read{% else %}Unread{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="w3-button w3-blue w3-small view-feedback-btn" 
+                                        data-id="{{ item.id }}"
+                                        data-student="{{ item.student_name }}"
+                                        data-subject="{{ item.subject }}"
+                                        data-message="{{ item.message }}"
+                                        data-date="{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                {% if not item.is_read %}
+                                <button class="w3-button w3-green w3-small mark-read-btn"
+                                        data-id="{{ item.id }}">
+                                    <i class="fas fa-check"></i> Mark as Read
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="w3-panel w3-pale-blue w3-center">
+                    <h4>No feedback received yet</h4>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- View Feedback Modal -->
+<div id="viewFeedbackModal" class="w3-modal">
+    <div class="w3-modal-content w3-card-4 w3-animate-zoom" style="max-width:600px; border-radius: 10px;">
+        <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 10px 10px 0 0;">
+            <span onclick="document.getElementById('viewFeedbackModal').style.display='none'" 
+                class="w3-button w3-display-topright">&times;</span>
+            <h2><i class="fas fa-comment"></i> <span id="modalTitle">Feedback Details</span></h2>
+        </header>
+        <div class="w3-container w3-padding-16">
+            <p><strong>From:</strong> <span id="modalStudent"></span></p>
+            <p><strong>Date:</strong> <span id="modalDate"></span></p>
+            <p><strong>Subject:</strong> <span id="modalSubject"></span></p>
+            <div class="w3-panel w3-pale-blue w3-padding">
+                <p id="modalMessage"></p>
+            </div>
+            <div class="w3-section">
+                <button onclick="document.getElementById('viewFeedbackModal').style.display='none'" 
+                        class="w3-button w3-block w3-light-grey">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up view feedback buttons
+        const viewButtons = document.querySelectorAll('.view-feedback-btn');
+        viewButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const student = this.getAttribute('data-student');
+                const subject = this.getAttribute('data-subject');
+                const message = this.getAttribute('data-message');
+                const date = this.getAttribute('data-date');
+                
+                viewFeedback(id, student, subject, message, date);
+            });
+        });
+        
+        // Set up mark as read buttons
+        const markReadButtons = document.querySelectorAll('.mark-read-btn');
+        markReadButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                markAsRead(id);
+            });
+        });
+    });
+    
+    function viewFeedback(id, studentName, subject, message, date) {
+        // Populate modal with feedback details
+        document.getElementById('modalStudent').textContent = studentName;
+        document.getElementById('modalSubject').textContent = subject;
+        document.getElementById('modalMessage').textContent = message;
+        document.getElementById('modalDate').textContent = date;
+        
+        // Mark as read if not already read
+        fetch(`/admin_mark_feedback_read/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        // Show modal
+        document.getElementById('viewFeedbackModal').style.display = 'block';
+    }
+    
+    function markAsRead(id) {
+        fetch(`/admin_mark_feedback_read/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Error marking feedback as read');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating feedback status');
+        });
+    }
+</script>
+{% endblock %} 

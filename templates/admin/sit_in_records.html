@@ -1,0 +1,272 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Sit-in Records{% endblock %}
+
+{% block head %}
+<style>
+    .filter-form {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .filter-item {
+        flex: 1;
+        min-width: 200px;
+    }
+    .filter-label {
+        display: block;
+        margin-bottom: 5px;
+        color: #555;
+    }
+    .filter-input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .filter-button {
+        background-color: #0047ab;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    .filter-button:hover {
+        background-color: #003380;
+    }
+    .records-table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .records-table th {
+        background-color: #f8f9fa;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: bold;
+        color: #333;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .records-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .records-table tr:last-child td {
+        border-bottom: none;
+    }
+    .records-table tr:hover {
+        background-color: #f8f9fa;
+    }
+    .records-table .w3-button {
+        padding: 6px 10px;
+        margin: 2px;
+    }
+    .status-active {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .status-completed {
+        background-color: #efebe9;
+        color: #4e342e;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .table-actions {
+        white-space: nowrap;
+    }
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    .pagination a {
+        color: #0047ab;
+        padding: 8px 16px;
+        text-decoration: none;
+        border: 1px solid #dee2e6;
+        margin: 0 4px;
+    }
+    .pagination a:hover {
+        background-color: #e9ecef;
+    }
+    .pagination a.active {
+        background-color: #0047ab;
+        color: white;
+        border: 1px solid #0047ab;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-history"></i> Sit-in Records</h2>
+        <p class="text-muted">View and manage all sit-in sessions.</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-form">
+        <form method="GET">
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label class="filter-label" for="student_id">Student ID:</label>
+                    <input type="text" id="student_id" name="student_id" class="filter-input" 
+                           value="{{ request.args.get('student_id', '') }}">
+                </div>
+                <div class="filter-item">
+                    <label class="filter-label" for="course">Course:</label>
+                    <select id="course" name="course" class="filter-input">
+                        <option value="">All Courses</option>
+                        <option value="BSIT" {% if request.args.get('course') == 'BSIT' %}selected{% endif %}>BSIT</option>
+                        <option value="BSCS" {% if request.args.get('course') == 'BSCS' %}selected{% endif %}>BSCS</option>
+                        <option value="BSCJ" {% if request.args.get('course') == 'BSCJ' %}selected{% endif %}>BSCJ</option>
+                        <option value="BSA" {% if request.args.get('course') == 'BSA' %}selected{% endif %}>BSA</option>
+                        <option value="BSBA" {% if request.args.get('course') == 'BSBA' %}selected{% endif %}>BSBA</option>
+                        <option value="BSHM" {% if request.args.get('course') == 'BSHM' %}selected{% endif %}>BSHM</option>
+                        <option value="BSE" {% if request.args.get('course') == 'BSE' %}selected{% endif %}>BSE</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label class="filter-label" for="lab_room">Lab Room:</label>
+                    <select id="lab_room" name="lab_room" class="filter-input">
+                        <option value="">All Labs</option>
+                        <option value="524" {% if request.args.get('lab_room') == '524' %}selected{% endif %}>524</option>
+                        <option value="526" {% if request.args.get('lab_room') == '526' %}selected{% endif %}>526</option>
+                        <option value="528" {% if request.args.get('lab_room') == '528' %}selected{% endif %}>528</option>
+                        <option value="530" {% if request.args.get('lab_room') == '530' %}selected{% endif %}>530</option>
+                        <option value="542" {% if request.args.get('lab_room') == '542' %}selected{% endif %}>542</option>
+                        <option value="544" {% if request.args.get('lab_room') == '544' %}selected{% endif %}>544</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label class="filter-label" for="start_date">Start Date:</label>
+                    <input type="date" id="start_date" name="start_date" class="filter-input" 
+                           value="{{ request.args.get('start_date', '') }}">
+                </div>
+                <div class="filter-item">
+                    <label class="filter-label" for="end_date">End Date:</label>
+                    <input type="date" id="end_date" name="end_date" class="filter-input" 
+                           value="{{ request.args.get('end_date', '') }}">
+                </div>
+                <div class="filter-item">
+                    <label class="filter-label" for="status">Status:</label>
+                    <select id="status" name="status" class="filter-input">
+                        <option value="">All Status</option>
+                        <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Active</option>
+                        <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="filter-button">Apply Filters</button>
+            
+            <!-- Export Buttons -->
+            <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+                <a href="{{ url_for('admin_export_records', format='csv', **request.args) }}" class="w3-button w3-green">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </a>
+                <a href="{{ url_for('admin_export_records', format='excel', **request.args) }}" class="w3-button w3-green">
+                    <i class="fas fa-file-excel"></i> Export Excel
+                </a>
+                <a href="{{ url_for('admin_export_records', format='pdf', **request.args) }}" class="w3-button w3-green">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Records Table -->
+    {% if sit_in_records %}
+        <table class="records-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Purpose</th>
+                    <th>Lab Room</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in sit_in_records %}
+                    <tr>
+                        <td>{{ record.id }}</td>
+                        <td>
+                            <strong>{{ record.firstname }} {{ record.lastname }}</strong><br>
+                            <small class="text-muted">{{ record.user_id }}</small>
+                        </td>
+                        <td>{{ record.course }}</td>
+                        <td>{{ record.purpose }}</td>
+                        <td>{{ record.lab_room }}</td>
+                        <td>{{ record.start_time.strftime('%b %d, %Y %I:%M %p') }}</td>
+                        <td>
+                            {% if record.end_time %}
+                                {{ record.end_time.strftime('%b %d, %Y %I:%M %p') }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if record.end_time %}
+                                <span class="status-completed">Completed</span>
+                            {% else %}
+                                <span class="status-active">Active</span>
+                            {% endif %}
+                        </td>
+                        <td class="table-actions">
+                            <a href="{{ url_for('admin_student_search', student_id=record.user_id) }}" class="w3-button w3-small w3-blue">
+                                <i class="fas fa-search"></i>
+                            </a>
+                            {% if not record.end_time %}
+                                <form method="POST" action="{{ url_for('admin_end_sit_in', sit_in_id=record.id) }}" style="display: inline-block;">
+                                    <button type="submit" class="w3-button w3-small w3-red" onclick="return confirm('Are you sure you want to end this sit-in session?')">
+                                        <i class="fas fa-stop-circle"></i>
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <a href="#" {% if page == 1 %}class="disabled"{% endif %}>&laquo;</a>
+            {% for i in range(1, total_pages + 1) %}
+                <a href="?page={{ i }}" {% if page == i %}class="active"{% endif %}>{{ i }}</a>
+            {% endfor %}
+            <a href="#" {% if page == total_pages %}class="disabled"{% endif %}>&raquo;</a>
+        </div>
+    {% else %}
+        <div class="w3-panel w3-light-grey w3-center w3-padding-32">
+            <h3>No Records Found</h3>
+            <p>No sit-in records match your search criteria. Try adjusting your filters or create new sit-in sessions.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

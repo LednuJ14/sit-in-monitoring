@@ -1,0 +1,261 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Student Management - Admin Dashboard{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .student-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .student-table th, .student-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    .student-table th {
+        background-color: #0047ab;
+        color: white;
+    }
+    .student-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+    }
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .status-active {
+        background-color: #27ae60;
+        color: white;
+    }
+    .status-inactive {
+        background-color: #e74c3c;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="w3-container">
+    <h2><i class="fas fa-users"></i> Student Management</h2>
+    
+    <!-- Add New Student Button -->
+    <div class="w3-margin-bottom">
+        <button onclick="document.getElementById('addStudentModal').style.display='block'" class="w3-button w3-blue">
+            <i class="fas fa-user-plus"></i> Add New Student
+        </button>
+    </div>
+    
+    <!-- Student List Table -->
+    <div class="w3-card-4">
+        <table class="student-table">
+            <thead>
+                <tr>
+                    <th>ID Number</th>
+                    <th>Name</th>
+                    <th>Year Level</th>
+                    <th>Course</th>
+                    <th>Remaining Sessions</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if students %}
+                    {% for student in students %}
+                        <tr>
+                            <td>{{ student.idno }}</td>
+                            <td>{{ student.firstname }} {{ student.lastname }}</td>
+                            <td>{{ student.yearlevel }}</td>
+                            <td>{{ student.course }}</td>
+                            <td>{{ student.remaining_sessions }}</td>
+                            <td class="action-buttons">
+                                <button class="w3-button w3-blue w3-small edit-btn" data-id="{{ student.id }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="w3-button w3-{{ 'red' if student.is_active else 'green' }} w3-small toggle-btn" data-id="{{ student.id }}">
+                                    <i class="fas fa-{{ 'ban' if student.is_active else 'check' }}"></i>
+                                </button>
+                                <button class="w3-button w3-amber w3-small reset-btn" data-id="{{ student.id }}">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="w3-center">No students found.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Student Modal -->
+<div id="addStudentModal" class="w3-modal">
+    <div class="w3-modal-content w3-card-4 w3-animate-zoom" style="max-width:600px">
+        <header class="w3-container w3-blue">
+            <span onclick="document.getElementById('addStudentModal').style.display='none'" 
+                class="w3-button w3-display-topright">&times;</span>
+            <h2><i class="fas fa-user-plus"></i> Add New Student</h2>
+        </header>
+        <form action="{{ url_for('admin_add_student') }}" method="POST" class="w3-container w3-padding-16">
+            <div class="w3-row-padding">
+                <div class="w3-half">
+                    <label><b>First Name:</b></label>
+                    <input class="w3-input w3-border" type="text" name="firstname" required>
+                </div>
+                <div class="w3-half">
+                    <label><b>Last Name:</b></label>
+                    <input class="w3-input w3-border" type="text" name="lastname" required>
+                </div>
+            </div>
+            
+            <div class="w3-row-padding">
+                <div class="w3-half">
+                    <label><b>Student ID:</b></label>
+                    <input class="w3-input w3-border" type="text" name="student_id" required>
+                </div>
+                <div class="w3-half">
+                    <label><b>Email:</b></label>
+                    <input class="w3-input w3-border" type="email" name="email" required>
+                </div>
+            </div>
+            
+            <div class="w3-row-padding">
+                <div class="w3-half">
+                    <label><b>Course:</b></label>
+                    <select class="w3-select w3-border" name="course" required>
+                        <option value="" disabled selected>Select Course</option>
+                        <option value="BSIT">BSIT</option>
+                        <option value="BSCS">BSCS</option>
+                        <option value="BSBA">BSBA</option>
+                        <option value="BSA">BSA</option>
+                        <option value="BSHM">BSHM</option>
+                        <option value="BSE">BSE</option>
+                        <option value="BSCJ">BSCJ</option>
+                    </select>
+                </div>
+                <div class="w3-half">
+                    <label><b>Year Level:</b></label>
+                    <select class="w3-select w3-border" name="yearlevel" required>
+                        <option value="" disabled selected>Select Year</option>
+                        <option value="1">1st Year</option>
+                        <option value="2">2nd Year</option>
+                        <option value="3">3rd Year</option>
+                        <option value="4">4th Year</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="w3-section">
+                <label><b>Contact Number:</b></label>
+                <input class="w3-input w3-border" type="tel" name="contact" required>
+            </div>
+            
+            <div class="w3-section">
+                <label><b>Initial Password:</b></label>
+                <input class="w3-input w3-border" type="password" name="password" required>
+            </div>
+            
+            <div class="w3-section">
+                <button type="submit" class="w3-button w3-blue">
+                    <i class="fas fa-save"></i> Save Student
+                </button>
+                <button type="button" onclick="document.getElementById('addStudentModal').style.display='none'" 
+                    class="w3-button w3-light-grey">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Add event listeners for all buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        // Edit student buttons
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                editStudent(this.dataset.id);
+            });
+        });
+        
+        // Toggle status buttons
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                toggleStudentStatus(this.dataset.id);
+            });
+        });
+        
+        // Reset password buttons
+        document.querySelectorAll('.reset-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                resetPassword(this.dataset.id);
+            });
+        });
+    });
+
+    function editStudent(id) {
+        // TODO: Implement edit student functionality
+        alert('Edit student functionality coming soon!');
+    }
+    
+    function toggleStudentStatus(id) {
+        if (confirm('Are you sure you want to change this student\'s status?')) {
+            fetch(`/admin_toggle_student_status/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error updating student status');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating student status');
+            });
+        }
+    }
+    
+    function resetPassword(id) {
+        if (confirm('Are you sure you want to reset this student\'s password?')) {
+            fetch(`/admin_reset_student_password/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Password reset successful! New password: ${data.new_password}`);
+                } else {
+                    alert(data.message || 'Error resetting password');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error resetting password');
+            });
+        }
+    }
+</script>
+{% endblock %} 

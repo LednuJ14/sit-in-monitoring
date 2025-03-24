@@ -1,0 +1,128 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Current Sit-ins{% endblock %}
+
+{% block head %}
+<style>
+    .current-sit-ins-header {
+        margin-bottom: 20px;
+    }
+    .records-table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .records-table th {
+        background-color: #f8f9fa;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: bold;
+        color: #333;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .records-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .records-table tr:last-child td {
+        border-bottom: none;
+    }
+    .records-table tr:hover {
+        background-color: #f8f9fa;
+    }
+    .status-active {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .refresh-button {
+        background-color: #0047ab;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+    .no-records {
+        text-align: center;
+        padding: 30px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+    }
+    .end-session-btn {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .end-session-btn:hover {
+        background-color: #bd2130;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-desktop"></i> Current Sit-ins</h2>
+        <p class="text-muted">View and manage active sit-in sessions</p>
+    </div>
+
+    <!-- Active Sit-ins Table -->
+    {% if active_sit_ins %}
+        <table class="records-table">
+            <thead>
+                <tr>
+                    <th>Sit-in ID</th>
+                    <th>Student ID</th>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Purpose</th>
+                    <th>Lab Room</th>
+                    <th>Started</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sit_in in active_sit_ins %}
+                    <tr>
+                        <td>{{ sit_in.id }}</td>
+                        <td>{{ sit_in.student_id }}</td>
+                        <td>{{ sit_in.firstname }} {{ sit_in.lastname }}</td>
+                        <td>{{ sit_in.course }}</td>
+                        <td>{{ sit_in.purpose }}</td>
+                        <td>{{ sit_in.lab_room }}</td>
+                        <td>{{ sit_in.start_time.strftime('%b %d, %Y %I:%M %p') }}</td>
+                        <td>{{ sit_in.duration }} min</td>
+                        <td><span class="status-active">Active</span></td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin_end_sit_in', sit_in_id=sit_in.id) }}" onsubmit="return confirm('Are you sure you want to end this session?');">
+                                <button type="submit" class="end-session-btn">
+                                    <i class="fas fa-sign-out-alt"></i> Log Out
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="no-records">
+            <h3><i class="fas fa-info-circle"></i> No Active Sit-ins</h3>
+            <p>There are currently no active sit-in sessions.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

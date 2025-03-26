@@ -439,7 +439,6 @@ def admin_sit_in_records():
     lab_room = request.args.get('lab_room', '')
     start_date = request.args.get('start_date', '')
     end_date = request.args.get('end_date', '')
-    status = request.args.get('status', '')
     search_bar = request.args.get('search_bar', '')  # Add search_bar parameter
 
     try:
@@ -452,9 +451,14 @@ def admin_sit_in_records():
                    s.lab_room, s.start_time, s.end_time, s.created_by
             FROM sit_ins s
             JOIN students u ON s.student_id = u.idno
-            WHERE 1=1
+            WHERE s.end_time IS NOT NULL
         """
-        count_query = "SELECT COUNT(*) as total FROM sit_ins s JOIN students u ON s.student_id = u.idno WHERE 1=1"
+        count_query = """
+            SELECT COUNT(*) as total 
+            FROM sit_ins s 
+            JOIN students u ON s.student_id = u.idno 
+            WHERE s.end_time IS NOT NULL
+        """
         params = []
         
         # Dynamically add conditions based on the filters
@@ -480,11 +484,6 @@ def admin_sit_in_records():
             conditions.append("DATE(s.start_time) <= %s")
             params.append(end_date)
 
-        if status == "active":
-            conditions.append("s.end_time IS NULL")
-        elif status == "completed":
-            conditions.append("s.end_time IS NOT NULL")
-
         if search_bar:
             conditions.append("""
                 (u.firstname LIKE %s OR u.lastname LIKE %s OR s.student_id LIKE %s OR u.course LIKE %s OR s.purpose LIKE %s OR s.lab_room LIKE %s)
@@ -498,7 +497,7 @@ def admin_sit_in_records():
             count_query += " AND " + " AND ".join(conditions)
 
         # Add ordering and pagination to the query
-        base_query += " ORDER BY s.start_time DESC LIMIT %s OFFSET %s"
+        base_query += " ORDER BY s.end_time DESC LIMIT %s OFFSET %s"
         offset = (page - 1) * per_page
         
         # Get total record count
@@ -510,44 +509,6 @@ def admin_sit_in_records():
         cursor.execute(base_query, params + [per_page, offset])
         sit_in_records = cursor.fetchall()
         
-        # Get statistics for the view
-        # 1. Unique students
-        cursor.execute("""
-            SELECT COUNT(DISTINCT s.student_id) as count
-            FROM sit_ins s
-            JOIN students u ON s.student_id = u.idno
-            WHERE 1=1 """ + (" AND " + " AND ".join(conditions) if conditions else ""), params)
-        unique_students = cursor.fetchone()['count']
-        
-        # 2. Average duration in minutes
-        cursor.execute("""
-            SELECT AVG(TIMESTAMPDIFF(MINUTE, s.start_time, IFNULL(s.end_time, NOW()))) as avg_duration
-            FROM sit_ins s
-            JOIN students u ON s.student_id = u.idno
-            WHERE 1=1 """ + (" AND " + " AND ".join(conditions) if conditions else ""), params)
-        avg_duration = cursor.fetchone()['avg_duration'] or 0
-        
-        # 3. Active sessions count
-        active_sessions_query = count_query + " AND s.end_time IS NULL"
-        cursor.execute(active_sessions_query, params)
-        active_sessions = cursor.fetchone()['total']
-        
-        # 4. Distribution by course
-        cursor.execute("""
-            SELECT u.course as label, COUNT(*) as value
-            FROM sit_ins s
-            JOIN students u ON s.student_id = u.idno
-            WHERE 1=1 """ + (" AND " + " AND ".join(conditions) if conditions else "") + " GROUP BY u.course ORDER BY value DESC", params)
-        course_data = cursor.fetchall()
-        
-        # 5. Distribution by lab room
-        cursor.execute("""
-            SELECT s.lab_room as label, COUNT(*) as value
-            FROM sit_ins s
-            JOIN students u ON s.student_id = u.idno
-            WHERE 1=1 """ + (" AND " + " AND ".join(conditions) if conditions else "") + " GROUP BY s.lab_room ORDER BY value DESC", params)
-        lab_room_data = cursor.fetchall()
-        
         cursor.close()
         conn.close()
         
@@ -557,20 +518,12 @@ def admin_sit_in_records():
             sit_in_records=sit_in_records,
             page=page,
             total_pages=total_pages,
-            # New statistics data
-            total_records=total_records,
-            unique_students=unique_students,
-            avg_duration=avg_duration,
-            active_sessions=active_sessions,
-            course_data=course_data,
-            lab_room_data=lab_room_data
+            total_records=total_records
         )
         
     except Error as e:
         flash(f"Database error: {e}", "error")
         return render_template("admin/sit_in_records.html", admin=ADMIN_CREDENTIALS[session["admin"]])
-
-
 
 @app.route("/admin_feedback")
 def admin_feedback():
@@ -2551,6 +2504,120 @@ def admin_active_sit_ins():
     except Error as e:
         flash(f"Database error: {e}", "error")
         return render_template("admin/active_sit_ins.html", admin=ADMIN_CREDENTIALS[session["admin"]])
+
+@app.route("/admin_daily_sit_ins")
+def admin_daily_sit_ins():
+    if "admin" not in session:
+        flash("Admin login required", "error")
+        return redirect(url_for("home"))
+    
+    # Get page number and records per page
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get today's date
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # Get count of sit-ins that ended today for pagination
+        cursor.execute("""
+            SELECT COUNT(*) as total
+            FROM sit_ins s
+            JOIN students u ON s.student_id = u.idno
+            WHERE DATE(s.end_time) = %s
+        """, (today,))
+        
+        total_records = cursor.fetchone()['total']
+        total_pages = (total_records + per_page - 1) // per_page  # Ceiling division
+        
+        # Calculate offset for pagination
+        offset = (page - 1) * per_page
+        
+        # Get paginated sit-ins that ended today
+        cursor.execute("""
+            SELECT s.id, s.student_id, u.firstname, u.lastname, u.course, s.purpose, 
+                   s.lab_room, s.start_time, s.end_time, 
+                   TIMESTAMPDIFF(MINUTE, s.start_time, s.end_time) as duration
+            FROM sit_ins s
+            JOIN students u ON s.student_id = u.idno
+            WHERE DATE(s.end_time) = %s
+            ORDER BY s.end_time DESC
+            LIMIT %s OFFSET %s
+        """, (today, per_page, offset))
+        
+        daily_sit_ins = cursor.fetchall()
+        
+        # Statistics
+        # 1. Total number of finished sit-ins today
+        total_finished = total_records
+        
+        # 2. Average duration in minutes - need all records for accuracy
+        cursor.execute("""
+            SELECT AVG(TIMESTAMPDIFF(MINUTE, s.start_time, s.end_time)) as avg_duration
+            FROM sit_ins s
+            WHERE DATE(s.end_time) = %s
+        """, (today,))
+        avg_duration_result = cursor.fetchone()
+        avg_duration = round(avg_duration_result['avg_duration'], 1) if avg_duration_result['avg_duration'] else 0
+        
+        # 5. Distribution by lab room
+        cursor.execute("""
+            SELECT s.lab_room as label, COUNT(*) as value
+            FROM sit_ins s
+            WHERE DATE(s.end_time) = %s
+            GROUP BY s.lab_room
+            ORDER BY value DESC
+        """, (today,))
+        
+        lab_room_data = cursor.fetchall()
+        
+        # 6. Distribution by purpose
+        cursor.execute("""
+            SELECT s.purpose as label, COUNT(*) as value
+            FROM sit_ins s
+            WHERE DATE(s.end_time) = %s
+            GROUP BY s.purpose
+            ORDER BY value DESC
+        """, (today,))
+        
+        purpose_data = cursor.fetchall()
+        
+        # Get most active hour (peak hour)
+        cursor.execute("""
+            SELECT HOUR(end_time) as hour, COUNT(*) as count
+            FROM sit_ins
+            WHERE DATE(end_time) = %s
+            GROUP BY HOUR(end_time)
+            ORDER BY count DESC
+            LIMIT 1
+        """, (today,))
+        
+        peak_hour_data = cursor.fetchone()
+        peak_hour = {'label': f"{peak_hour_data['hour']:02d}:00", 'value': peak_hour_data['count']} if peak_hour_data else {'label': 'N/A', 'value': 0}
+        
+        cursor.close()
+        conn.close()
+        
+        return render_template(
+            "admin/daily_sit_ins.html", 
+            admin=ADMIN_CREDENTIALS[session["admin"]],
+            daily_sit_ins=daily_sit_ins,
+            today=today,
+            total_finished=total_finished,
+            avg_duration=avg_duration,
+            lab_room_data=lab_room_data,
+            purpose_data=purpose_data,
+            peak_hour=peak_hour,
+            page=page,
+            total_pages=total_pages
+        )
+        
+    except Error as e:
+        flash(f"Database error: {e}", "error")
+        return render_template("admin/daily_sit_ins.html", admin=ADMIN_CREDENTIALS[session["admin"]])
 
 if __name__ == "__main__":
     app.run(debug=True)

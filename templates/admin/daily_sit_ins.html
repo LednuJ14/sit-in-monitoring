@@ -1,0 +1,271 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Today's Finished Sit-ins{% endblock %}
+
+{% block head %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        padding: 20px;
+        text-align: center;
+    }
+    .stat-number {
+        font-size: 28px;
+        font-weight: bold;
+        margin: 10px 0;
+        color: #0047ab;
+    }
+    .stat-label {
+        color: #666;
+        font-size: 14px;
+    }
+    .charts-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .chart-container {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        padding: 20px;
+        height: 300px;
+    }
+    .chart-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #333;
+    }
+    .records-table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .records-table th {
+        background-color: #f8f9fa;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: bold;
+        color: #333;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .records-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .records-table tr:last-child td {
+        border-bottom: none;
+    }
+    .records-table tr:hover {
+        background-color: #f8f9fa;
+    }
+    .records-table .w3-button {
+        padding: 6px 10px;
+        margin: 2px;
+    }
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    .pagination a {
+        color: #0047ab;
+        padding: 8px 16px;
+        text-decoration: none;
+        border: 1px solid #dee2e6;
+        margin: 0 4px;
+    }
+    .pagination a:hover {
+        background-color: #e9ecef;
+    }
+    .pagination a.active {
+        background-color: #0047ab;
+        color: white;
+        border: 1px solid #0047ab;
+    }
+    @media (max-width: 768px) {
+        .stats-container {
+            grid-template-columns: 1fr 1fr;
+        }
+        .charts-container {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-calendar-day"></i> Current Sit-in Records</h2>
+        <p class="text-muted">View sit-in sessions that have been completed today.</p>
+    </div>
+    
+    <!-- Charts -->
+    <div class="charts-container">
+        <!-- Lab Room Usage Chart -->
+        <div class="chart-container">
+            <div class="chart-title">Lab Room Usage</div>
+            <canvas id="labRoomChart" class="w3-margin"></canvas>
+        </div>
+
+        <!-- Purpose Distribution Chart -->
+        <div class="chart-container">
+            <div class="chart-title">Distribution by Purpose</div>
+            <canvas id="purposeChart" class="w3-margin"></canvas>
+        </div>
+    </div>
+    {% if daily_sit_ins %}
+        <table class="records-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Student ID</th>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Purpose</th>
+                    <th>Lab Room</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in daily_sit_ins %}
+                    <tr>
+                        <td>{{ record.id }}</td>
+                        <td>{{ record.student_id }}</td>
+                        <td>{{ record.firstname }} {{ record.lastname }}</td>
+                        <td>{{ record.course }}</td>
+                        <td>{{ record.purpose }}</td>
+                        <td>{{ record.lab_room }}</td>
+                        <td>{{ record.start_time.strftime('%I:%M %p') }}</td>
+                        <td>{{ record.end_time.strftime('%I:%M %p') }}</td>
+                        <td>{{ record.duration }} min</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="pagination">
+            {% for i in range(1, total_pages + 1) %}
+                {% set args = request.args.copy() %}
+                {% if args.get('page') %}{% set _ = args.pop('page') %}{% endif %}
+                <a href="{{ url_for('admin_daily_sit_ins', page=i, **args) }}" 
+                   class="{% if i == page %}active{% endif %}">{{ i }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="w3-panel w3-light-grey w3-center w3-padding">
+            <p>No finished sit-ins recorded for today.</p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // Initialize charts
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to generate random colors
+        function generateColors(count) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                const hue = (i * 137) % 360; // Use golden angle for distribution
+                colors.push(`hsl(${hue}, 70%, 60%)`);
+            }
+            return colors;
+        }
+
+        // Lab Room Usage Chart
+        const labRoomChartData = JSON.parse('{{ lab_room_data|tojson|safe }}');
+        if (labRoomChartData && labRoomChartData.length > 0) {
+            const labRoomCtx = document.getElementById('labRoomChart').getContext('2d');
+            const labRoomLabels = labRoomChartData.map(function(item) { return "Lab " + item.label; });
+            const labRoomValues = labRoomChartData.map(function(item) { return item.value; });
+            const labRoomColors = generateColors(labRoomLabels.length);
+            
+            new Chart(labRoomCtx, {
+                type: 'pie',
+                data: {
+                    labels: labRoomLabels,
+                    datasets: [{
+                        data: labRoomValues,
+                        backgroundColor: labRoomColors,
+                        borderColor: 'white',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 15,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Purpose Distribution Chart
+        const purposeChartData = JSON.parse('{{ purpose_data|tojson|safe }}');
+        if (purposeChartData && purposeChartData.length > 0) {
+            const purposeCtx = document.getElementById('purposeChart').getContext('2d');
+            const purposeLabels = purposeChartData.map(function(item) { return item.label; });
+            const purposeValues = purposeChartData.map(function(item) { return item.value; });
+            const purposeColors = generateColors(purposeLabels.length);
+            
+            new Chart(purposeCtx, {
+                type: 'pie',
+                data: {
+                    labels: purposeLabels,
+                    datasets: [{
+                        data: purposeValues,
+                        backgroundColor: purposeColors,
+                        borderColor: 'white',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 15,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

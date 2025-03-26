@@ -141,12 +141,16 @@
                 <span class="tooltip">Manage student accounts and information</span>
             </a>
             <a href="{{ url_for('admin_active_sit_ins') }}" class="nav-link {% if request.path == url_for('admin_active_sit_ins') %}active{% endif %}">
-                CURRENT SIT-INS
+                SIT-IN
                 <span class="tooltip">View and manage current sit-ins</span>
             </a>
-            <a href="{{ url_for('admin_sit_in_records') }}" class="nav-link {% if request.path == url_for('admin_sit_in_records') %}active{% endif %}">
+            <a href="{{ url_for('admin_daily_sit_ins') }}" class="nav-link {% if request.path == url_for('admin_daily_sit_ins') %}active{% endif %}">
                 VIEW SIT-IN RECORDS
-                <span class="tooltip">View historical sit-in records and statistics</span>
+                <span class="tooltip">View today's finished sit-ins and statistics</span>
+            </a>
+            <a href="{{ url_for('admin_sit_in_records') }}" class="nav-link {% if request.path == url_for('admin_sit_in_records') %}active{% endif %}">
+                SIT-IN REPORTS
+                <span class="tooltip">View all historical finished sit-in records</span>
             </a>
             <a href="{{ url_for('admin_feedback') }}" class="nav-link {% if request.path == url_for('admin_feedback') %}active{% endif %}">
                 FEEDBACK

@@ -1,10 +1,8 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Sit-in Records{% endblock %}
+{% block title %}Finished Sit-in Records{% endblock %}
 
 {% block head %}
-<!-- Include Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     .filter-form {
         background-color: white;
@@ -121,56 +119,15 @@
         color: white;
         border: 1px solid #0047ab;
     }
-    /* Statistics section styles */
-
-    .charts-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-    .chart-container {
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        padding: 20px;
-        height: 300px;
-    }
-    .chart-title {
-        font-size: 16px;
-        font-weight: bold;
-        margin-bottom: 15px;
-        color: #333;
-    }
-    @media (max-width: 768px) {
-        .stats-container, .charts-container {
-            grid-template-columns: 1fr;
-        }
-    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <h2><i class="fas fa-history"></i> Sit-in Records</h2>
-        <p class="text-muted">View historical sit-in sessions and analyze usage patterns.</p>
+        <h2><i class="fas fa-history"></i> Generate Reports</h2>
+        <p class="text-muted">View all completed sit-in sessions.</p>
     </div>
-
-    <div class="charts-container">
-        <!-- Course Distribution Chart -->
-        <div class="chart-container">
-            <div class="chart-title">Distribution by Course</div>
-            <canvas id="courseChart" class="w3-margin"></canvas>
-        </div>
-
-        <!-- Lab Room Usage Chart -->
-        <div class="chart-container">
-            <div class="chart-title">Lab Room Usage</div>
-            <canvas id="labRoomChart" class="w3-margin"></canvas>
-        </div>
-    </div>
-
     <!-- Filters -->
     <div class="filter-form">
         <form method="GET">
@@ -204,7 +161,6 @@
         </form>
     </div>
     
-
     <!-- Records Table -->
     {% if sit_in_records %}
         <table class="records-table">
@@ -218,7 +174,6 @@
                     <th>Lab Room</th>
                     <th>Start Time</th>
                     <th>End Time</th>
-                    <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -232,31 +187,11 @@
                         <td>{{ record.purpose }}</td>
                         <td>{{ record.lab_room }}</td>
                         <td>{{ record.start_time.strftime('%b %d, %Y %I:%M %p') }}</td>
-                        <td>
-                            {% if record.end_time %}
-                                {{ record.end_time.strftime('%b %d, %Y %I:%M %p') }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if record.end_time %}
-                                <span class="status-completed">Completed</span>
-                            {% else %}
-                                <span class="status-active">Active</span>
-                            {% endif %}
-                        </td>
+                        <td>{{ record.end_time.strftime('%b %d, %Y %I:%M %p') }}</td>
                         <td class="table-actions">
                             <a href="{{ url_for('admin_student_search', student_id=record.student_id) }}" class="w3-button w3-small w3-blue">
                                 <i class="fas fa-search"></i>
                             </a>
-                            {% if not record.end_time %}
-                                <form method="POST" action="{{ url_for('admin_end_sit_in', sit_in_id=record.id) }}" style="display: inline-block;">
-                                    <button type="submit" class="w3-button w3-small w3-red" onclick="return confirm('Are you sure you want to end this sit-in session?')">
-                                        <i class="fas fa-stop-circle"></i>
-                                    </button>
-                                </form>
-                            {% endif %}
                         </td>
                     </tr>
                 {% endfor %}
@@ -267,8 +202,10 @@
         {% if total_pages > 1 %}
         <div class="pagination">
             {% for i in range(1, total_pages + 1) %}
-                    <a href="{{ url_for('admin_sit_in_records', page=i, **request.args) }}" 
-                       class="{% if i == page %}active{% endif %}">{{ i }}</a>
+                {% set args = request.args.copy() %}
+                {% if args.get('page') %}{% set _ = args.pop('page') %}{% endif %}
+                <a href="{{ url_for('admin_sit_in_records', page=i, **args) }}" 
+                   class="{% if i == page %}active{% endif %}">{{ i }}</a>
             {% endfor %}
         </div>
         {% endif %}
@@ -278,93 +215,4 @@
         </div>
     {% endif %}
 </div>
-
-<script>
-    // Initialize charts
-    document.addEventListener('DOMContentLoaded', function() {
-        // Function to generate random colors
-        function generateColors(count) {
-            const colors = [];
-            for (let i = 0; i < count; i++) {
-                const hue = (i * 137) % 360; // Use golden angle for distribution
-                colors.push(`hsl(${hue}, 70%, 60%)`);
-            }
-            return colors;
-        }
-
-        // Course Distribution Chart
-        const courseChartData = JSON.parse('{{ course_data|tojson|safe }}');
-        if (courseChartData && courseChartData.length > 0) {
-            const courseCtx = document.getElementById('courseChart').getContext('2d');
-            const courseLabels = courseChartData.map(function(item) { return item.label; });
-            const courseValues = courseChartData.map(function(item) { return item.value; });
-            const courseColors = generateColors(courseLabels.length);
-            
-            new Chart(courseCtx, {
-                type: 'pie',
-                data: {
-                    labels: courseLabels,
-                    datasets: [{
-                        data: courseValues,
-                        backgroundColor: courseColors,
-                        borderColor: 'white',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                boxWidth: 15,
-                                font: {
-                                    size: 11
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Lab Room Usage Chart
-        const labRoomChartData = JSON.parse('{{ lab_room_data|tojson|safe }}');
-        if (labRoomChartData && labRoomChartData.length > 0) {
-            const labRoomCtx = document.getElementById('labRoomChart').getContext('2d');
-            const labRoomLabels = labRoomChartData.map(function(item) { return "Lab " + item.label; });
-            const labRoomValues = labRoomChartData.map(function(item) { return item.value; });
-            const labRoomColors = generateColors(labRoomLabels.length);
-            
-            new Chart(labRoomCtx, {
-                type: 'pie',
-                data: {
-                    labels: labRoomLabels,
-                    datasets: [{
-                        data: labRoomValues,
-                        backgroundColor: labRoomColors,
-                        borderColor: 'white',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                boxWidth: 15,
-                                font: {
-                                    size: 11
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    });
-</script>
 {% endblock %} 

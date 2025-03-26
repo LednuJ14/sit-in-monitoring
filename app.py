@@ -268,90 +268,74 @@ def api_search_student():
         for student in all_students:
             print(f"  - ID: '{student['idno']}' (type: {type(student['idno'])}) Name: {student['firstname']} {student['lastname']}")
         
-        # Directly check if the student exists using exact match
-        direct_query = "SELECT * FROM students WHERE idno = %s"
-        cursor.execute(direct_query, (student_id,))
-        direct_result = cursor.fetchone()
-        print(f"DEBUG: Direct query using: {direct_query} with parameter ({student_id})")
-        print(f"DEBUG: Direct query result: {direct_result}")
+        # Prepare different formats of the ID to try
+        id_variations = [
+            student_id,                                      # Original format
+            student_id.lstrip('0'),                          # Without leading zeros
+            student_id.zfill(8),                             # With leading zeros (8 digits)
+            student_id.replace('-', ''),                     # Without hyphens
+            student_id.replace(' ', ''),                     # Without spaces
+            f"{student_id[:4]}-{student_id[4:]}" if len(student_id) >= 8 else student_id  # Add hyphen after 4 digits
+        ]
         
-        # Try various matching techniques
-        cursor.execute("SELECT * FROM students WHERE idno = %s", (student_id,))
-        exact_match = cursor.fetchone()
-        print(f"DEBUG: Exact match result: {exact_match}")
+        # Try to find student with any of the ID variations
+        found_student = None
+        used_variation = None
         
-        cursor.execute("SELECT * FROM students WHERE LOWER(idno) = LOWER(%s)", (student_id,))
-        case_insensitive = cursor.fetchone()
-        print(f"DEBUG: Case-insensitive match result: {case_insensitive}")
-        
-        cursor.execute("SELECT * FROM students WHERE idno LIKE %s", (f"%{student_id}%",))
-        like_match = cursor.fetchone()
-        print(f"DEBUG: LIKE match result: {like_match}")
-        
-        # First try exact match with proper query
-        cursor.execute("""
-            SELECT idno, firstname, lastname, course, yearlevel, email, 
-                   (30 - (SELECT COUNT(*) FROM sit_ins WHERE student_id = students.idno)) as remaining_sessions
-            FROM students 
-            WHERE idno = %s
-        """, (student_id,))
-        
-        student = cursor.fetchone()
-        
-        # If no exact match, try case-insensitive match
-        if not student:
-            print(f"DEBUG: No exact match found, trying case-insensitive match")
+        for variation in id_variations:
+            print(f"DEBUG: Trying ID variation: '{variation}'")
             cursor.execute("""
-                SELECT idno, firstname, lastname, course, yearlevel, email, 
-                       (30 - (SELECT COUNT(*) FROM sit_ins WHERE student_id = students.idno)) as remaining_sessions
+                SELECT idno, firstname, lastname, course, yearlevel, email, remaining_sessions
                 FROM students 
-                WHERE LOWER(idno) = LOWER(%s)
-            """, (student_id,))
+                WHERE idno = %s
+            """, (variation,))
+            
             student = cursor.fetchone()
+            if student:
+                found_student = student
+                used_variation = variation
+                print(f"DEBUG: Match found with variation: '{variation}'")
+                break
         
-        # If still no match, try partial match
-        if not student:
-            print(f"DEBUG: No case-insensitive match found, trying partial match")
+        # If still no match, try LIKE search as last resort
+        if not found_student:
+            print(f"DEBUG: No exact match with variations, trying LIKE search")
             cursor.execute("""
-                SELECT idno, firstname, lastname, course, yearlevel, email, 
-                       (30 - (SELECT COUNT(*) FROM sit_ins WHERE student_id = students.idno)) as remaining_sessions
+                SELECT idno, firstname, lastname, course, yearlevel, email, remaining_sessions
                 FROM students 
                 WHERE idno LIKE %s
             """, (f"%{student_id}%",))
-            student = cursor.fetchone()
+            found_student = cursor.fetchone()
+            if found_student:
+                used_variation = "LIKE match"
+                print(f"DEBUG: Found with LIKE search: '{found_student['idno']}'")
         
         cursor.close()
         conn.close()
         
-        if student:
-            # Adjust remaining sessions based on course
-            max_sessions = 30 if student['course'] in ["BSIT", "BSCS"] else 15
-            student['remaining_sessions'] = max(0, student['remaining_sessions'])
-            
-            print(f"DEBUG: Student found: {student['firstname']} {student['lastname']}")
+        if found_student:
+            print(f"DEBUG: Student found: {found_student['firstname']} {found_student['lastname']}")
             
             return jsonify({
                 "found": True,
-                "id": student['idno'],
-                "name": f"{student['firstname']} {student['lastname']}",
-                "course": student['course'],
-                "year_level": student['yearlevel'],
-                "email": student['email'],
-                "remaining_sessions": student['remaining_sessions']
+                "id": found_student['idno'],
+                "name": f"{found_student['firstname']} {found_student['lastname']}",
+                "course": found_student['course'],
+                "year_level": found_student['yearlevel'],
+                "email": found_student['email'],
+                "remaining_sessions": found_student['remaining_sessions'],
+                "matched_with": used_variation
             })
         else:
-            print(f"DEBUG: No student found with ID: '{student_id}'")
-            print(f"DEBUG: Possible cause: ID type mismatch or formatting issue")
+            print(f"DEBUG: No student found with ID: '{student_id}' or variations")
             
-            # Return a more detailed error for debugging
+            # Return debugging info about tried variations
             return jsonify({
                 "found": False,
                 "debug_info": {
                     "searched_id": student_id,
-                    "id_type": str(type(student_id)),
-                    "has_exact_match": exact_match is not None,
-                    "has_case_insensitive": case_insensitive is not None,
-                    "has_partial_match": like_match is not None
+                    "tried_variations": id_variations,
+                    "id_type": str(type(student_id))
                 }
             })
             
@@ -412,14 +396,32 @@ def api_create_sit_in():
                 "message": "Student has no remaining sessions"
             }), 400
         
-        # Create new sit-in
+        # Create new sit-in with status automatically set to 'approved' since admin is creating it
         cursor.execute("""
-            INSERT INTO sit_ins (student_id, purpose, lab_room, start_time, created_by)
-            VALUES (%s, %s, %s, NOW(), %s)
+            INSERT INTO sit_ins (student_id, purpose, lab_room, start_time, created_by, status)
+            VALUES (%s, %s, %s, NOW(), %s, 'approved')
         """, (student_id, purpose, lab, session["admin"]))
         
-        conn.commit()
         sit_in_id = cursor.lastrowid
+        
+        # Decrement the student's remaining sessions
+        cursor.execute("""
+            UPDATE students
+            SET remaining_sessions = remaining_sessions - 1
+            WHERE idno = %s
+        """, (student_id,))
+        
+        # Create a notification for the student
+        cursor.execute("""
+            INSERT INTO notifications (student_id, type, message, reference_id, created_at, is_read)
+            VALUES (%s, 'sit_in', %s, %s, NOW(), 0)
+        """, (
+            student_id, 
+            f"Admin created a sit-in session for you in {lab} for purpose: {purpose}.",
+            sit_in_id
+        ))
+        
+        conn.commit()
         
         cursor.close()
         conn.close()
@@ -855,6 +857,24 @@ def admin_announcements():
                 VALUES (%s, %s, %s, %s, %s)
             """, (title, content, visibility, expiry_date, session["admin"]))
             
+            announcement_id = cursor.lastrowid
+            
+            # Create notifications for students based on announcement visibility
+            if visibility == 'all':
+                cursor.execute("""
+                    INSERT INTO notifications (student_id, type, message, reference_id, created_at, is_read)
+                    SELECT idno, 'announcement', %s, %s, NOW(), 0
+                    FROM students
+                """, (f"New Announcement: {title}", announcement_id))
+            else:
+                # Insert for specific course students (bsit or bscs)
+                cursor.execute("""
+                    INSERT INTO notifications (student_id, type, message, reference_id, created_at, is_read)
+                    SELECT idno, 'announcement', %s, %s, NOW(), 0
+                    FROM students
+                    WHERE course = %s
+                """, (f"New Announcement: {title}", announcement_id, visibility.upper()))
+            
             conn.commit()
             flash("Announcement created successfully", "success")
             
@@ -929,10 +949,24 @@ def student_dashboard():
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM students WHERE idno = %s", (student_id,))
     student = cursor.fetchone()
+    
+    # Fetch announcements for this student based on their course or 'all' visibility
+    announcements = []
+    if student:
+        # Get course-specific and 'all' announcements that haven't expired
+        cursor.execute("""
+            SELECT id, title, content, visibility, created_at, expiry_date
+            FROM announcements
+            WHERE (visibility = %s OR visibility = 'all')
+            AND (expiry_date IS NULL OR expiry_date > NOW())
+            ORDER BY created_at DESC
+        """, (student['course'].lower(),))
+        announcements = cursor.fetchall()
+    
     conn.close()
 
     if student:
-        return render_template("student/student_dashboard.html", user=student)
+        return render_template("student/student_dashboard.html", user=student, announcements=announcements, now=datetime.now())
     else:
         flash("Student not found", "error")
         return redirect(url_for('home'))

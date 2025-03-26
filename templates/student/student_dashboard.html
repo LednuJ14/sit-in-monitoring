@@ -49,7 +49,28 @@
                 <h2 class="w3-margin"><b>ANNOUNCEMENT</b></h2>
             </header>
             <div class="container w3-margin" style="max-height: 270px; overflow-y: auto;">
-                <p>Important updates will be posted here.</p>
+                {% if announcements %}
+                    {% for announcement in announcements %}
+                        <div class="announcement" style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                            <h3 style="color: #0047ab; margin-bottom: 5px;">{{ announcement.title }}</h3>
+                            <p style="font-size: 0.8em; color: #666; margin-bottom: 5px;">
+                                Posted: {{ announcement.created_at.strftime('%b %d, %Y') }}
+                                {% if announcement.expiry_date %}
+                                    | Expires: {{ announcement.expiry_date.strftime('%b %d, %Y') }}
+                                {% endif %}
+                                | Visibility: 
+                                {% if announcement.visibility == 'all' %}
+                                    All Students
+                                {% else %}
+                                    {{ announcement.visibility.upper() }} Students
+                                {% endif %}
+                            </p>
+                            <div style="white-space: pre-line;">{{ announcement.content | nl2br }}</div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No announcements at this time.</p>
+                {% endif %}
             </div>
         </div>
 

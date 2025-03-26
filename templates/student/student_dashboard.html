@@ -128,6 +128,9 @@
 
         // Load recent notifications
         loadRecentNotifications();
+        
+        // Check for pending reservations
+        checkPendingReservations();
     });
     
     function loadRecentNotifications() {
@@ -138,6 +141,34 @@
             })
             .catch(error => {
                 console.error('Error loading notifications on dashboard:', error);
+            });
+    }
+    
+    function checkPendingReservations() {
+        fetch('/api/check_student_active_sessions')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Active sessions checked:', data);
+                if (data.has_pending_reservation) {
+                    // Create and show pending reservation alert
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'w3-panel w3-pale-yellow w3-leftbar w3-border-yellow';
+                    alertDiv.style.margin = '20px auto';
+                    alertDiv.style.width = '90%';
+                    alertDiv.innerHTML = `
+                        <p><i class="fas fa-exclamation-triangle"></i> <b>Notice:</b> You have a pending reservation that is awaiting admin approval. 
+                        You will be notified when it's approved. <a href="{{ url_for('student_history') }}">View details</a></p>
+                    `;
+                    
+                    // Insert at the top of the content area, after the profile section
+                    const contentContainer = document.querySelector('.w3-container[style*="width: 70%"]');
+                    if (contentContainer) {
+                        contentContainer.insertBefore(alertDiv, contentContainer.firstChild);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error checking active sessions:', error);
             });
     }
 </script>

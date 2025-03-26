@@ -384,13 +384,7 @@ def api_create_sit_in():
             }), 400
         
         # Check remaining sessions
-        cursor.execute("SELECT COUNT(*) as used_sessions FROM sit_ins WHERE student_id = %s", (student_id,))
-        used_sessions = cursor.fetchone()['used_sessions']
-        
-        max_sessions = 30 if student['course'] in ["BSIT", "BSCS"] else 15
-        remaining_sessions = max_sessions - used_sessions
-        
-        if remaining_sessions <= 0:
+        if student['remaining_sessions'] <= 0:
             return jsonify({
                 "success": False, 
                 "message": "Student has no remaining sessions"
@@ -403,13 +397,6 @@ def api_create_sit_in():
         """, (student_id, purpose, lab, session["admin"]))
         
         sit_in_id = cursor.lastrowid
-        
-        # Decrement the student's remaining sessions
-        cursor.execute("""
-            UPDATE students
-            SET remaining_sessions = remaining_sessions - 1
-            WHERE idno = %s
-        """, (student_id,))
         
         # Create a notification for the student
         cursor.execute("""
@@ -429,8 +416,8 @@ def api_create_sit_in():
         return jsonify({
             "success": True, 
             "id": sit_in_id,
-            "message": "Sit-in created successfully",
-            "remaining_sessions": remaining_sessions - 1
+            "message": "Sit-in created successfully. Session count will be deducted when the session ends.",
+            "remaining_sessions": student['remaining_sessions']
         })
         
     except Error as e:
@@ -1079,6 +1066,16 @@ def admin_end_sit_in(sit_in_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
+        # Get the student ID for this sit-in
+        cursor.execute("SELECT student_id FROM sit_ins WHERE id = %s AND end_time IS NULL", (sit_in_id,))
+        sit_in = cursor.fetchone()
+        
+        if not sit_in:
+            flash("Sit-in session already ended or not found", "error")
+            return redirect(url_for("admin_sit_in_records"))
+        
+        student_id = sit_in['student_id']
+        
         # Update sit-in record to mark as ended
         cursor.execute("""
             UPDATE sit_ins 
@@ -1087,7 +1084,24 @@ def admin_end_sit_in(sit_in_id):
         """, (sit_in_id,))
         
         if cursor.rowcount > 0:
-            flash("Sit-in session ended successfully", "success")
+            # Now deduct one session from the student's remaining sessions
+            cursor.execute("""
+                UPDATE students
+                SET remaining_sessions = GREATEST(remaining_sessions - 1, 0)
+                WHERE idno = %s
+            """, (student_id,))
+            
+            # Create a notification for the student
+            cursor.execute("""
+                INSERT INTO notifications (student_id, type, message, reference_id, created_at, is_read)
+                VALUES (%s, 'sit_in', %s, %s, NOW(), 0)
+            """, (
+                student_id, 
+                "Your lab session has been ended by an administrator. One session has been deducted from your remaining sessions.",
+                sit_in_id
+            ))
+            
+            flash("Sit-in session ended successfully and session count deducted", "success")
         else:
             flash("Sit-in session already ended or not found", "error")
         
@@ -1602,21 +1616,32 @@ def api_check_student_active_sessions():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Check for active sit-ins for this student
+        # Check for active sit-ins for this student that are approved (not pending)
         cursor.execute("""
             SELECT id FROM sit_ins 
-            WHERE student_id = %s AND end_time IS NULL
+            WHERE student_id = %s AND end_time IS NULL AND status = 'approved'
             LIMIT 1
         """, (student_id,))
         
         active_session = cursor.fetchone()
+        
+        # Also check if there are any pending reservations
+        cursor.execute("""
+            SELECT id FROM sit_ins 
+            WHERE student_id = %s AND end_time IS NULL AND status = 'pending'
+            LIMIT 1
+        """, (student_id,))
+        
+        pending_reservation = cursor.fetchone()
         
         cursor.close()
         conn.close()
         
         return jsonify({
             "has_active_session": active_session is not None,
-            "session_id": active_session['id'] if active_session else None
+            "has_pending_reservation": pending_reservation is not None,
+            "session_id": active_session['id'] if active_session else None,
+            "pending_id": pending_reservation['id'] if pending_reservation else None
         })
         
     except Error as e:
@@ -1772,16 +1797,24 @@ def student_history():
             flash("Student not found", "error")
             return redirect(url_for('home'))
         
-        # Get active session if exists
+        # Get active session if exists (must be approved)
         cursor.execute("""
             SELECT * FROM sit_ins 
-            WHERE student_id = %s AND end_time IS NULL
+            WHERE student_id = %s AND end_time IS NULL AND status = 'approved'
             ORDER BY start_time DESC
             LIMIT 1
         """, (student_id,))
         active_session = cursor.fetchone()
         
-        # Get session history
+        # Get pending reservations
+        cursor.execute("""
+            SELECT * FROM sit_ins 
+            WHERE student_id = %s AND status = 'pending'
+            ORDER BY start_time DESC
+        """, (student_id,))
+        pending_reservations = cursor.fetchall()
+        
+        # Get all session history
         cursor.execute("""
             SELECT * FROM sit_ins 
             WHERE student_id = %s
@@ -1797,6 +1830,7 @@ def student_history():
             "student/history.html",
             user=student,
             active_session=active_session,
+            pending_reservations=pending_reservations,
             sessions=sessions
         )
         
@@ -1815,26 +1849,33 @@ def end_student_session(session_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Check if the session belongs to the logged-in student and is not already ended
+        # Check if the session belongs to the logged-in student, is approved, and is not already ended
         cursor.execute(
-            "SELECT * FROM sit_ins WHERE id = %s AND student_id = %s AND end_time IS NULL",
+            "SELECT * FROM sit_ins WHERE id = %s AND student_id = %s AND end_time IS NULL AND status = 'approved'",
             (session_id, student_id),
         )
         session_record = cursor.fetchone()
 
         if not session_record:
             conn.close()
-            return jsonify({"success": False, "message": "Invalid session or session already ended"})
+            return jsonify({"success": False, "message": "Invalid session, session already ended, or session not yet approved"})
 
         # Update the end_time to current time
         cursor.execute(
             "UPDATE sit_ins SET end_time = NOW() WHERE id = %s",
             (session_id,),
         )
+        
+        # Deduct one session from the student's remaining sessions
+        cursor.execute(
+            "UPDATE students SET remaining_sessions = GREATEST(remaining_sessions - 1, 0) WHERE idno = %s",
+            (student_id,),
+        )
+        
         conn.commit()
         conn.close()
         
-        return jsonify({"success": True, "message": "Session ended successfully"})
+        return jsonify({"success": True, "message": "Session ended successfully. One session has been deducted from your remaining sessions."})
     except Error as e:
         print(e)
         return jsonify({"success": False, "message": "An error occurred while ending the session"})
@@ -2160,20 +2201,13 @@ def admin_approve_reservation(reservation_id):
             WHERE id = %s
         """, (admin_notes, reservation_id))
         
-        # Deduct a session from the student's remaining sessions
-        cursor.execute("""
-            UPDATE students
-            SET remaining_sessions = remaining_sessions - 1
-            WHERE idno = %s AND remaining_sessions > 0
-        """, (reservation['student_id'],))
-        
         # Create notification for the student
         cursor.execute("""
             INSERT INTO notifications (student_id, type, message, reference_id, created_at, is_read)
             VALUES (%s, 'reservation', %s, %s, NOW(), 0)
         """, (
             reservation['student_id'], 
-            f"Your reservation request has been approved. {admin_notes if admin_notes else ''}",
+            f"Your reservation request has been approved. Sessions will be deducted when you end your session. {admin_notes if admin_notes else ''}",
             reservation_id
         ))
         
@@ -2280,18 +2314,25 @@ def admin_end_session(sit_in_id):
             WHERE id = %s
         """, (sit_in_id,))
         
+        # Deduct one session from the student's remaining sessions
+        cursor.execute("""
+            UPDATE students
+            SET remaining_sessions = GREATEST(remaining_sessions - 1, 0)
+            WHERE idno = %s
+        """, (sit_in['student_id'],))
+        
         # Create notification for the student
         cursor.execute("""
             INSERT INTO notifications (student_id, type, message, reference_id, created_at, is_read)
             VALUES (%s, 'reservation', %s, %s, NOW(), 0)
         """, (
             sit_in['student_id'], 
-            f"Your lab session has been ended by an administrator.",
+            f"Your lab session has been ended by an administrator. One session has been deducted from your remaining sessions.",
             sit_in_id
         ))
         
         conn.commit()
-        flash(f"Session #{sit_in_id} has been ended", "success")
+        flash(f"Session #{sit_in_id} has been ended and session count deducted", "success")
         
     except Error as e:
         flash(f"Database error: {e}", "error")

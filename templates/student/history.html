@@ -153,6 +153,44 @@
     </div>
     {% endif %}
 
+    <!-- Pending Reservations Card -->
+    {% if pending_reservations and pending_reservations|length > 0 %}
+    <div class="card">
+        <div class="card-header" style="background-color: #f39c12;">
+            <h2><b>PENDING RESERVATIONS</b></h2>
+        </div>
+        <div class="card-body">
+            <div class="w3-panel w3-pale-yellow w3-leftbar w3-border-yellow">
+                <p><i class="fas fa-exclamation-triangle"></i> <b>Note:</b> You cannot use these reservations until they are approved by an administrator.</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Laboratory</th>
+                        <th>Purpose</th>
+                        <th>Requested Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in pending_reservations %}
+                    <tr style="background-color: #fff9e6;">
+                        <td>{{ reservation.start_time.strftime('%B %d, %Y') }}</td>
+                        <td>{{ reservation.lab_room }}</td>
+                        <td>{{ reservation.purpose }}</td>
+                        <td>{{ reservation.start_time.strftime('%I:%M %p') }}</td>
+                        <td>
+                            <span style="color: #f39c12; font-weight: bold;">Awaiting Approval</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- History Card -->
     <div class="card">
         <div class="card-header">

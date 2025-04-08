@@ -131,6 +131,16 @@
         background-color: #f9f9f9;
         transition: all 0.3s ease;
     }
+    /* Performance bar styles */
+    .performance-bar {
+        background-color: #4CAF50;
+        color: white;
+        padding: 3px;
+        border-radius: 4px;
+        text-align: center;
+        display: inline-block;
+        min-width: 30px;
+    }
     @media (max-width: 768px) {
         .dashboard-grid {
             grid-template-columns: 1fr;
@@ -255,6 +265,87 @@
         </div>
     </div>
 
+    <!-- Leaderboards Section -->
+    <div class="dashboard-grid">
+        <!-- Most Active Students -->
+        <div class="dashboard-section">
+            <div class="section-title">
+                <i class="fas fa-award"></i> Most Active Students
+            </div>
+            <div class="leaderboard-list">
+                {% if most_active_students %}
+                    <table class="w3-table w3-striped w3-bordered">
+                        <thead>
+                            <tr class="w3-blue">
+                                <th>Rank</th>
+                                <th>Student</th>
+                                <th>ID Number</th>
+                                <th>Course</th>
+                                <th>Sessions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in most_active_students %}
+                                <tr>
+                                    <td><b>{{ loop.index }}</b></td>
+                                    <td>{{ student.firstname }} {{ student.lastname }}</td>
+                                    <td>{{ student.idno }}</td>
+                                    <td>{{ student.course }}</td>
+                                    <td class="w3-center"><span class="w3-badge w3-blue">{{ student.session_count }}</span></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="w3-panel w3-light-grey w3-center w3-padding">
+                        <p>No activity data available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Top-performing Students -->
+        <div class="dashboard-section">
+            <div class="section-title">
+                <i class="fas fa-trophy"></i> Top-performing Students
+            </div>
+            <div class="leaderboard-list">
+                {% if top_performing_students %}
+                    <table class="w3-table w3-striped w3-bordered">
+                        <thead>
+                            <tr class="w3-green">
+                                <th>Rank</th>
+                                <th>Student</th>
+                                <th>ID Number</th>
+                                <th>Course</th>
+                                <th>Performance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in top_performing_students %}
+                                <tr>
+                                    <td><b>{{ loop.index }}</b></td>
+                                    <td>{{ student.firstname }} {{ student.lastname }}</td>
+                                    <td>{{ student.idno }}</td>
+                                    <td>{{ student.course }}</td>
+                                    <td class="w3-center">
+                                        <div class="performance-bar" data-score="{{ student.performance_score }}">
+                                            {{ student.performance_score }}%
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="w3-panel w3-light-grey w3-center w3-padding">
+                        <p>No performance data available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- Recent Activities -->
     <div class="dashboard-section">
         <h3><i class="fas fa-history"></i> Recent Activities</h3>
@@ -311,6 +402,16 @@
                 showAnnouncementFormBtn.style.display = 'block';
             });
         }
+    
+        // Set performance bar widths
+        document.querySelectorAll('.performance-bar').forEach(function(bar) {
+            const score = bar.getAttribute('data-score');
+            if (score) {
+                bar.style.width = score + '%';
+            } else {
+                bar.style.width = '0%';
+            }
+        });
     
         // Chart initialization
         // Get chart data from hidden elements

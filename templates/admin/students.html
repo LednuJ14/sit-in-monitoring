@@ -40,6 +40,18 @@
         background-color: #e74c3c;
         color: white;
     }
+    .points-input {
+        width: 60px;
+        text-align: center;
+    }
+    .points-form {
+        display: inline-block;
+    }
+    .points-info {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
 </style>
 {% endblock %}
 
@@ -51,6 +63,9 @@
     <div class="w3-margin-bottom">
         <button onclick="document.getElementById('addStudentModal').style.display='block'" class="w3-button w3-blue">
             <i class="fas fa-user-plus"></i> Add New Student
+        </button>
+        <button onclick="resetAllSessions()" class="w3-button w3-red">
+            <i class="fas fa-sync"></i> Reset All Sessions
         </button>
     </div>
     
@@ -64,6 +79,7 @@
                     <th>Year Level</th>
                     <th>Course</th>
                     <th>Remaining Sessions</th>
+                    <th>Points</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -76,15 +92,23 @@
                             <td>{{ student.yearlevel }}</td>
                             <td>{{ student.course }}</td>
                             <td>{{ student.remaining_sessions }}</td>
+                            <td>
+                                <form class="points-form" method="POST" action="{{ url_for('update_student_points') }}">
+                                    <input type="hidden" name="student_id" value="{{ student.idno }}">
+                                    <input type="number" name="points" class="points-input" value="{{ student.points }}" min="0" max="100">
+                                    <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                </form>
+                                <div class="points-info">
+                                    {% if student.points >= 3 %}
+                                    <span class="text-success">Next point will add a session!</span>
+                                    {% else %}
+                                    <span>{{ 3 - student.points }} points until next session</span>
+                                    {% endif %}
+                                </div>
+                            </td>
                             <td class="action-buttons">
-                                <button class="w3-button w3-blue w3-small edit-btn" data-id="{{ student.id }}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="w3-button w3-{{ 'red' if student.is_active else 'green' }} w3-small toggle-btn" data-id="{{ student.id }}">
-                                    <i class="fas fa-{{ 'ban' if student.is_active else 'check' }}"></i>
-                                </button>
-                                <button class="w3-button w3-amber w3-small reset-btn" data-id="{{ student.id }}">
-                                    <i class="fas fa-key"></i>
+                                <button class="w3-button w3-purple w3-small reset-sessions-btn" data-id="{{ student.idno }}" data-course="{{ student.course }}">
+                                    <i class="fas fa-sync"></i>
                                 </button>
                             </td>
                         </tr>
@@ -205,6 +229,13 @@
                 resetPassword(this.dataset.id);
             });
         });
+        
+        // Reset sessions buttons
+        document.querySelectorAll('.reset-sessions-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                resetSessions(this.dataset.id, this.dataset.course);
+            });
+        });
     });
 
     function editStudent(id) {
@@ -254,6 +285,54 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Error resetting password');
+            });
+        }
+    }
+    
+    function resetSessions(studentId, course) {
+        if (confirm('Are you sure you want to reset this student\'s remaining sessions?')) {
+            fetch(`/reset_student_sessions/${studentId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Sessions reset successfully to ${data.sessions}!`);
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error resetting sessions');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error resetting sessions');
+            });
+        }
+    }
+    
+    function resetAllSessions() {
+        if (confirm('WARNING: Are you sure you want to reset ALL students\' remaining sessions? This action cannot be undone.')) {
+            fetch('/reset_all_student_sessions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('All student sessions have been reset successfully!');
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error resetting all sessions');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error resetting all sessions');
             });
         }
     }

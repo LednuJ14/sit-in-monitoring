@@ -19,8 +19,11 @@ CREATE TABLE students (
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL,
     remaining_sessions INT DEFAULT 30,
+    points INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE students ADD points INT DEFAULT 0;
 
 -- Sit-ins Table (Lab usage records)
 CREATE TABLE sit_ins (
@@ -73,23 +76,21 @@ CREATE TABLE notifications (
 );
 
 -- Insert sample students
-INSERT INTO students (idno, firstname, lastname, middlename, course, yearlevel, email, password, remaining_sessions) VALUES
-('20230001', 'John', 'Doe', '', 'BSIT', 2, 'john.doe@example.com', 'password123', 30),
-('20230002', 'Jane', 'Smith', 'Marie', 'BSCS', 3, 'jane.smith@example.com', 'password123', 30),
-('20230003', 'Robert', 'Johnson', '', 'BSIT', 1, 'robert.johnson@example.com', 'password123', 30),
-('20230004', 'Emily', 'Williams', 'Grace', 'BSCS', 2, 'emily.williams@example.com', 'password123', 30),
-('20230005', 'Michael', 'Brown', '', 'BSIT', 4, 'michael.brown@example.com', 'password123', 30),
-('22629828', 'Test', 'Student', '', 'BSIT', 3, 'test.student@example.com', 'password123', 30);
+INSERT INTO students (idno, firstname, lastname, middlename, course, yearlevel, email, password, remaining_sessions, points) VALUES
+('123', 'John', 'Doe', '', 'BSIT', 2, 'john.doe@example.com', '123', 30, 0),
+('111', 'Jane', 'Smith', 'Marie', 'BSCJ', 3, 'jane.smith@example.com', '111', 15, 0),
+('20230003', 'Robert', 'Johnson', '', 'BSIT', 1, 'robert.johnson@example.com', 'password123', 30, 0),
+('20230004', 'Emily', 'Williams', 'Grace', 'BSCS', 2, 'emily.williams@example.com', 'password123', 30, 0),
+('20230005', 'Michael', 'Brown', '', 'BSIT', 4, 'michael.brown@example.com', 'password123', 30, 0),
+('22629828', 'Test', 'Student', '', 'BSIT', 3, 'test.student@example.com', 'password123', 30, 0);
 
 -- Insert sample sit-ins
 INSERT INTO sit_ins (student_id, purpose, lab_room, start_time, created_by) VALUES
-('2023-0001', 'Assignment', 'Laboratory 1', DATE_SUB(NOW(), INTERVAL 2 DAY), 'admin'),
-('2023-0002', 'Project', 'Laboratory 2', DATE_SUB(NOW(), INTERVAL 1 DAY), 'admin'),
-('2023-0003', 'Research', 'Laboratory 3', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'admin'),
-('2023-0004', 'Practice', 'Laboratory 1', NOW(), 'admin'),
-('2023-0005', 'Study', 'Laboratory 4', DATE_SUB(NOW(), INTERVAL 3 DAY), 'admin'),
-('2023-0001', 'Project', 'Laboratory 2', NOW(), 'admin'),
-('2023-0002', 'Assignment', 'Laboratory 3', DATE_SUB(NOW(), INTERVAL 4 HOUR), 'admin');
+('123', 'C', '524', NOW(), 'admin'),
+('111', 'C', '526', NOW(), 'admin'),
+('20230003', 'C', '528', NOW(), 'admin'),
+('20230004', 'C', '544', NOW(), 'admin'),
+('20230005', 'C', '542', NOW(), 'admin');
 
 -- Insert sample feedback
 INSERT INTO feedback (student_id, subject, message, created_at, response, response_date) VALUES

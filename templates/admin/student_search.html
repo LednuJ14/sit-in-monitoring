@@ -5,7 +5,7 @@
 {% block head %}
 <style>
     .search-container {
-        max-width: 600px;
+        max-width: 1000px;
         margin: 0 auto 30px;
     }
     .search-form {
@@ -27,15 +27,22 @@
     }
     .student-info {
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         margin-bottom: 15px;
     }
     .student-basic-info {
         flex: 2;
+        min-width: 250px;
+        padding-right: 20px;
     }
     .student-stats {
         flex: 1;
+        min-width: 200px;
         text-align: right;
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
     }
     .student-name {
         font-size: 20px;
@@ -47,9 +54,12 @@
         color: #6c757d;
         margin-bottom: 10px;
     }
+    .student-detail {
+        margin-bottom: 5px;
+    }
     .student-stats-item {
         font-size: 14px;
-        margin-bottom: 5px;
+        margin-bottom: 10px;
     }
     .student-stats-value {
         font-weight: bold;
@@ -74,6 +84,25 @@
         text-align: center;
         color: #6c757d;
     }
+    #advancedDebugResults {
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        border: 1px solid #eee;
+    }
+    .debug-panel {
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+    }
+    @media (max-width: 768px) {
+        .student-info {
+            flex-direction: column;
+        }
+        .student-basic-info {
+            padding-right: 0;
+            margin-bottom: 15px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -89,18 +118,18 @@
             <form id="studentSearchForm">
                 <div class="w3-row-padding">
                     <div class="w3-col l10 m9 s8">
-                        <input type="text" name="student_id" id="student_id_input" class="w3-input w3-border" 
+                        <input type="text" name="student_id" id="student_id_input" class="w3-input w3-border w3-round" 
                                placeholder="Enter Student ID" value="{{ request.args.get('student_id', '') }}" required>
                     </div>
                     <div class="w3-col l2 m3 s4">
-                        <button type="submit" class="w3-button w3-blue w3-block">
+                        <button type="submit" class="w3-button w3-blue w3-block w3-round">
                             <i class="fas fa-search"></i> Search
                         </button>
                     </div>
                 </div>
                 <div class="w3-row-padding w3-margin-top">
                     <div class="w3-col">
-                        <div class="w3-panel w3-pale-blue">
+                        <div class="w3-panel w3-pale-blue w3-round">
                             <p><i class="fas fa-info-circle"></i> Enter a student ID to search for a student and manage their sit-in sessions.</p>
                         </div>
                     </div>
@@ -160,22 +189,23 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="student-basic-info">
                                     <div class="student-name">${data.name}</div>
                                     <div class="student-id">${data.id}</div>
-                                    <div>Course: <b>${data.course}</b></div>
-                                    <div>Year Level: <b>${data.year_level}</b></div>
-                                    <div>Email: <b>${data.email}</b></div>
+                                    <div class="student-detail"><strong>Course:</strong> ${data.course}</div>
+                                    <div class="student-detail"><strong>Year Level:</strong> ${data.year_level}</div>
+                                    <div class="student-detail"><strong>Email:</strong> ${data.email}</div>
                                 </div>
                                 <div class="student-stats">
                                     <div class="student-stats-item">
-                                        Remaining Sessions: <span class="student-stats-value">${data.remaining_sessions}</span>
+                                        <i class="fas fa-calendar-check"></i> Remaining Sessions: 
+                                        <span class="student-stats-value">${data.remaining_sessions}</span>
                                     </div>
                                     <div id="activeSessionStatus"></div>
                                 </div>
                             </div>
                             <div class="actions">
-                                <button onclick="openCreateSitInForm()" class="w3-button w3-blue">
+                                <button onclick="openCreateSitInForm()" class="w3-button w3-blue w3-round">
                                     <i class="fas fa-user-clock"></i> Create Sit-in
                                 </button>
-                                <a href="{{ url_for('admin_sit_in_records') }}?student_id=${data.id}" class="w3-button w3-indigo">
+                                <a href="{{ url_for('admin_sit_in_records') }}?student_id=${data.id}" class="w3-button w3-indigo w3-round">
                                     <i class="fas fa-history"></i> View Student Records
                                 </a>
                             </div>
@@ -193,17 +223,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="w3-row-padding">
                                         <div class="w3-half">
                                             <label><b>Student ID:</b></label>
-                                            <input class="w3-input w3-border" type="text" value="${data.id}" readonly>
+                                            <input class="w3-input w3-border w3-round" type="text" value="${data.id}" readonly>
                                         </div>
                                         <div class="w3-half">
                                             <label><b>Student Name:</b></label>
-                                            <input class="w3-input w3-border" type="text" value="${data.name}" readonly>
+                                            <input class="w3-input w3-border w3-round" type="text" value="${data.name}" readonly>
                                         </div>
                                     </div>
                                     
                                     <div class="w3-section">
                                         <label><b>Purpose:</b></label>
-                                        <select class="w3-select w3-border" id="sit_in_purpose" name="purpose" required>
+                                        <select class="w3-select w3-border w3-round" id="sit_in_purpose" name="purpose" required>
                                             <option value="" disabled selected>Choose purpose</option>
                                             <option value="C">C Programming</option>
                                             <option value="C#">C# Programming</option>
@@ -216,7 +246,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     
                                     <div class="w3-section">
                                         <label><b>Lab Room:</b></label>
-                                        <select class="w3-select w3-border" id="sit_in_lab" name="lab" required>
+                                        <select class="w3-select w3-border w3-round" id="sit_in_lab" name="lab" required>
                                             <option value="" disabled selected>Choose lab room</option>
                                             <option value="524">524</option>
                                             <option value="526">526</option>
@@ -228,14 +258,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </div>
                                     
                                     <div class="w3-section">
-                                        <button type="submit" class="w3-button w3-blue w3-block">
+                                        <button type="submit" class="w3-button w3-blue w3-block w3-round">
                                             <i class="fas fa-save"></i> Create Sit-in
                                         </button>
                                     </div>
                                 </form>
                                 
                                 <div class="w3-container w3-border-top w3-padding-16 w3-light-grey">
-                                    <button type="button" onclick="document.getElementById('sitInCreationForm').style.display='none'" class="w3-button w3-red">
+                                    <button type="button" onclick="document.getElementById('sitInCreationForm').style.display='none'" class="w3-button w3-red w3-round">
                                         Cancel
                                     </button>
                                 </div>
@@ -283,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     let debugInfoHtml = '';
                     if (data.debug_info) {
                         debugInfoHtml = `
-                            <div class="w3-panel w3-pale-yellow w3-leftbar w3-border-yellow">
+                            <div class="debug-panel w3-panel w3-pale-yellow w3-leftbar w3-border-yellow">
                                 <h4>Debugging Information</h4>
                                 <p>Searched ID: <code>${data.debug_info.searched_id}</code> (Type: ${data.debug_info.id_type})</p>
                                 <p>Match Results:</p>
@@ -299,20 +329,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Add Try Different Formats section
                     const tryFormatsHtml = `
-                        <div class="w3-panel w3-pale-blue w3-leftbar w3-border-blue">
+                        <div class="debug-panel w3-panel w3-pale-blue w3-leftbar w3-border-blue">
                             <h4>Try Different ID Formats</h4>
                             <p>The student ID might be stored in a different format. Try these common variations:</p>
                             <div class="w3-bar">
-                                <button class="w3-button w3-tiny w3-blue w3-round" onclick="trySearch('${studentId}')">Original: ${studentId}</button>
-                                <button class="w3-button w3-tiny w3-blue w3-round" onclick="trySearch('${studentId.padStart(8, '0')}')">With Leading Zeros: ${studentId.padStart(8, '0')}</button>
-                                <button class="w3-button w3-tiny w3-blue w3-round" onclick="trySearch('${studentId.replace(/^(\d{4})(\d{4})$/, '$1-$2')}')">Hyphenated: ${studentId.replace(/^(\d{4})(\d{4})$/, '$1-$2')}</button>
+                                <button class="w3-button w3-small w3-blue w3-round" onclick="trySearch('${studentId}')">Original: ${studentId}</button>
+                                <button class="w3-button w3-small w3-blue w3-round" onclick="trySearch('${studentId.padStart(8, '0')}')">With Leading Zeros: ${studentId.padStart(8, '0')}</button>
+                                <button class="w3-button w3-small w3-blue w3-round" onclick="trySearch('${studentId.replace(/^(\d{4})(\d{4})$/, '$1-$2')}')">Hyphenated: ${studentId.replace(/^(\d{4})(\d{4})$/, '$1-$2')}</button>
                             </div>
                             <p class="w3-small">Click any button to try that format</p>
                         </div>
-                        <div class="w3-panel w3-pale-green w3-leftbar w3-border-green">
+                        <div class="debug-panel w3-panel w3-pale-green w3-leftbar w3-border-green">
                             <h4>Advanced Debug</h4>
                             <p>For more detailed information about database records:</p>
-                            <button class="w3-button w3-green w3-round" onclick="debugSearch('${studentId}')">Run Advanced Diagnostics</button>
+                            <button class="w3-button w3-green w3-round" onclick="debugSearch('${studentId}')">
+                                <i class="fas fa-bug"></i> Run Advanced Diagnostics
+                            </button>
                             <div id="advancedDebugResults" class="w3-container w3-padding w3-margin-top" style="display:none; max-height: 500px; overflow-y: auto;"></div>
                         </div>
                     `;
@@ -323,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h3>No Results Found</h3>
                             <p>No student found with ID "${studentId}". Please check the ID and try again.</p>
                             <p class="w3-small">Possible issues:</p>
-                            <ul class="w3-small">
+                            <ul class="w3-small text-left">
                                 <li>ID format may not match the database format (e.g., with/without leading zeros)</li>
                                 <li>The student ID may not exist in the database</li>
                                 <li>There might be special characters or spaces in the ID</li>
@@ -338,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error searching for student:', error);
                 document.getElementById('searchResults').innerHTML = `
-                    <div class="w3-panel w3-red">
+                    <div class="w3-panel w3-red w3-round">
                         <p><i class="fas fa-exclamation-circle"></i> An error occurred while searching: ${error.message}</p>
                         <p>Please try again or contact system administrator if the problem persists.</p>
                     </div>
@@ -366,19 +398,23 @@ function checkActiveSession(studentId) {
             if (data.active) {
                 statusElement.innerHTML = `
                     <div class="student-stats-item">
-                        Status: <span class="student-active">Currently active</span>
+                        <i class="fas fa-circle text-danger"></i> Status: 
+                        <span class="student-active">Currently active</span>
                     </div>
                     <div class="student-stats-item">
-                        Location: <span class="student-stats-value">${data.lab_room}</span>
+                        <i class="fas fa-map-marker-alt"></i> Location: 
+                        <span class="student-stats-value">${data.lab_room}</span>
                     </div>
                     <div class="student-stats-item">
-                        Since: <span class="student-stats-value">${new Date(data.start_time).toLocaleTimeString()}</span>
+                        <i class="fas fa-clock"></i> Since: 
+                        <span class="student-stats-value">${new Date(data.start_time).toLocaleTimeString()}</span>
                     </div>
                 `;
             } else {
                 statusElement.innerHTML = `
                     <div class="student-stats-item">
-                        Status: <span class="student-stats-value">No active session</span>
+                        <i class="fas fa-circle text-secondary"></i> Status: 
+                        <span class="student-stats-value">No active session</span>
                     </div>
                 `;
             }
@@ -387,7 +423,8 @@ function checkActiveSession(studentId) {
             console.error('Error checking active session:', error);
             document.getElementById('activeSessionStatus').innerHTML = `
                 <div class="student-stats-item">
-                    Status: <span class="student-stats-value">Unknown</span>
+                    <i class="fas fa-exclamation-triangle"></i> Status: 
+                    <span class="student-stats-value">Unknown</span>
                 </div>
             `;
         });
@@ -422,7 +459,7 @@ function debugSearch(idToSearch) {
             
             if (data.error) {
                 debugResultsContainer.innerHTML = `
-                    <div class="w3-panel w3-red">
+                    <div class="w3-panel w3-red w3-round">
                         <p>Error: ${data.error}</p>
                         <pre style="overflow-x: auto;">${data.traceback || ''}</pre>
                     </div>
@@ -540,7 +577,7 @@ function debugSearch(idToSearch) {
                     ${dbStructureHtml}
                     
                     <div class="w3-section w3-center">
-                        <button class="w3-button w3-red" onclick="document.getElementById('advancedDebugResults').style.display='none'">
+                        <button class="w3-button w3-red w3-round" onclick="document.getElementById('advancedDebugResults').style.display='none'">
                             Close Results
                         </button>
                     </div>
@@ -550,7 +587,7 @@ function debugSearch(idToSearch) {
         .catch(error => {
             console.error('Error running diagnostics:', error);
             debugResultsContainer.innerHTML = `
-                <div class="w3-panel w3-red">
+                <div class="w3-panel w3-red w3-round">
                     <p><i class="fas fa-exclamation-circle"></i> An error occurred while running diagnostics: ${error.message}</p>
                 </div>
             `;

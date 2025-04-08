@@ -205,6 +205,48 @@ def admin_dashboard():
         """)
         announcements = cursor.fetchall()
         
+        # Get most active students for leaderboard
+        cursor.execute("""
+            SELECT s.student_id as idno, u.firstname, u.lastname, u.course, COUNT(*) as session_count
+            FROM sit_ins s
+            JOIN students u ON s.student_id = u.idno
+            GROUP BY s.student_id, u.firstname, u.lastname, u.course
+            ORDER BY session_count DESC
+            LIMIT 5
+        """)
+        most_active_students = cursor.fetchall()
+        
+        # Get top-performing students based on duration and activity
+        cursor.execute("""
+            SELECT 
+                s.student_id as idno, 
+                u.firstname, 
+                u.lastname, 
+                u.course,
+                COUNT(*) as total_sessions,
+                AVG(TIMESTAMPDIFF(MINUTE, s.start_time, IFNULL(s.end_time, NOW()))) as avg_duration,
+                FLOOR(
+                    (COUNT(*) * 0.6 + 
+                    AVG(TIMESTAMPDIFF(MINUTE, s.start_time, IFNULL(s.end_time, NOW()))) / 60 * 0.4) * 100 / 
+                    (SELECT MAX(ct * 0.6 + dur * 0.4) FROM 
+                        (SELECT 
+                            student_id, 
+                            COUNT(*) as ct, 
+                            AVG(TIMESTAMPDIFF(MINUTE, start_time, IFNULL(end_time, NOW()))) / 60 as dur
+                        FROM sit_ins
+                        WHERE end_time IS NOT NULL
+                        GROUP BY student_id) as subquery)
+                ) as performance_score
+            FROM sit_ins s
+            JOIN students u ON s.student_id = u.idno
+            WHERE s.end_time IS NOT NULL
+            GROUP BY s.student_id, u.firstname, u.lastname, u.course
+            HAVING COUNT(*) >= 3
+            ORDER BY performance_score DESC
+            LIMIT 5
+        """)
+        top_performing_students = cursor.fetchall()
+        
         cursor.close()
         conn.close()
         
@@ -222,6 +264,9 @@ def admin_dashboard():
             course_data=course_data,
             lab_room_data=lab_room_data,
             announcements=announcements,
+            # Leaderboard data
+            most_active_students=most_active_students,
+            top_performing_students=top_performing_students,
             now=datetime.now()
         )
     except Error as e:
@@ -2295,16 +2340,17 @@ def admin_end_session(sit_in_id):
 @app.route("/admin_students")
 def admin_students():
     if "admin" not in session:
-        flash("Please login as admin first.", "error")
+        flash("Admin login required", "error")
         return redirect(url_for("home"))
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Get all students
         cursor.execute("""
-            SELECT * FROM students 
+            SELECT idno, firstname, lastname, course, yearlevel, email, 
+                   remaining_sessions, points
+            FROM students
             ORDER BY lastname, firstname
         """)
         students = cursor.fetchall()
@@ -2312,19 +2358,14 @@ def admin_students():
         cursor.close()
         conn.close()
         
-        return render_template(
-            "admin/students.html",
-            admin=ADMIN_CREDENTIALS[session["admin"]],
-            students=students
-        )
-        
+        return render_template("admin/students.html", 
+                             students=students,
+                             admin=ADMIN_CREDENTIALS[session["admin"]])
     except Error as e:
         flash(f"Database error: {e}", "error")
-        return render_template(
-            "admin/students.html",
-            admin=ADMIN_CREDENTIALS[session["admin"]],
-            students=[]
-        )
+        return render_template("admin/students.html", 
+                             students=[],
+                             admin=ADMIN_CREDENTIALS[session["admin"]])
 
 @app.route("/admin_add_student", methods=["POST"])
 def admin_add_student():
@@ -2618,6 +2659,151 @@ def admin_daily_sit_ins():
     except Error as e:
         flash(f"Database error: {e}", "error")
         return render_template("admin/daily_sit_ins.html", admin=ADMIN_CREDENTIALS[session["admin"]])
+
+@app.route("/update_student_points", methods=["POST"])
+def update_student_points():
+    if "admin" not in session:
+        flash("Admin login required", "error")
+        return redirect(url_for("home"))
+    
+    student_id = request.form.get("student_id")
+    new_points = int(request.form.get("points", 0))
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get current points and remaining sessions
+        cursor.execute("SELECT points, remaining_sessions FROM students WHERE idno = %s", (student_id,))
+        student = cursor.fetchone()
+        
+        if not student:
+            flash("Student not found", "error")
+            return redirect(url_for("admin_students"))
+        
+        current_points = student["points"]
+        remaining_sessions = student["remaining_sessions"]
+        
+        # Calculate how many full sets of 3 points we have
+        full_sets = new_points // 3
+        remaining_points = new_points % 3
+        
+        # Update points and add sessions
+        cursor.execute("""
+            UPDATE students 
+            SET points = %s,
+                remaining_sessions = remaining_sessions + %s
+            WHERE idno = %s
+        """, (remaining_points, full_sets, student_id))
+        
+        conn.commit()
+        
+        # Create notification for the student if sessions were added
+        if full_sets > 0:
+            cursor.execute("""
+                INSERT INTO notifications (student_id, type, message, created_at, is_read)
+                VALUES (%s, 'points', %s, NOW(), 0)
+            """, (student_id, f"Congratulations! You've earned {full_sets} additional session(s) through points!"))
+            conn.commit()
+        
+        flash(f"Points updated successfully. Student earned {full_sets} additional session(s)!", "success")
+        
+    except Error as e:
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+    
+    return redirect(url_for("admin_students"))
+
+@app.route("/reset_student_sessions/<string:student_id>", methods=["POST"])
+def reset_student_sessions(student_id):
+    if "admin" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 401
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get the student details to determine course
+        cursor.execute("SELECT course FROM students WHERE idno = %s", (student_id,))
+        student = cursor.fetchone()
+        
+        if not student:
+            return jsonify({"success": False, "message": "Student not found"}), 404
+        
+        # Reset sessions based on course (30 for BSIT/BSCS, 15 for others)
+        default_sessions = 30 if student["course"] in ["BSIT", "BSCS"] else 15
+        
+        # Update the student's remaining sessions
+        cursor.execute("""
+            UPDATE students 
+            SET remaining_sessions = %s
+            WHERE idno = %s
+        """, (default_sessions, student_id))
+        
+        conn.commit()
+        
+        # Create notification for the student
+        cursor.execute("""
+            INSERT INTO notifications (student_id, type, message, created_at, is_read)
+            VALUES (%s, 'system', %s, NOW(), 0)
+        """, (student_id, f"Your remaining lab sessions have been reset to {default_sessions}."))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            "success": True, 
+            "message": f"Sessions reset successfully for student {student_id}",
+            "sessions": default_sessions
+        })
+        
+    except Error as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/reset_all_student_sessions", methods=["POST"])
+def reset_all_student_sessions():
+    if "admin" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 401
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Reset sessions based on course (30 for BSIT/BSCS, 15 for others)
+        cursor.execute("""
+            UPDATE students 
+            SET remaining_sessions = CASE
+                WHEN course IN ('BSIT', 'BSCS') THEN 30
+                ELSE 15
+            END
+        """)
+        
+        # Get the list of affected students for notifications
+        cursor.execute("SELECT idno, course, remaining_sessions FROM students")
+        students = cursor.fetchall()
+        
+        # Create notifications for all students
+        for student in students:
+            cursor.execute("""
+                INSERT INTO notifications (student_id, type, message, created_at, is_read)
+                VALUES (%s, 'system', %s, NOW(), 0)
+            """, (student["idno"], f"Your remaining lab sessions have been reset to {student['remaining_sessions']}."))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            "success": True, 
+            "message": "All student sessions have been reset successfully"
+        })
+        
+    except Error as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)

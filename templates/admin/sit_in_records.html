@@ -131,12 +131,38 @@
     <!-- Filters -->
     <div class="filter-form">
         <form method="GET">
+            <div class="filter-group">
                 <div class="filter-item">
-                <label class="filter-label" for="search_bar">Search:</label>
-                <input type="text" id="search_bar" name="search_bar" class="filter-input" 
-                       placeholder="Search by name, student ID, course, etc."
-                       value="{{ request.args.get('search_bar', '') }}" aria-describedby="searchHelp">
-                <small id="searchHelp" class="form-text text-muted">Search by name, student ID, course, purpose, lab room, etc.</small>
+                    <label class="filter-label" for="search_bar">Search:</label>
+                    <input type="text" id="search_bar" name="search_bar" class="filter-input" 
+                           placeholder="Search by name, student ID, course, etc."
+                           value="{{ request.args.get('search_bar', '') }}" aria-describedby="searchHelp">
+                    <small id="searchHelp" class="form-text text-muted">Search by name, student ID, course, purpose, lab room, etc.</small>
+                </div>
+                <div class="filter-item">
+                    <label class="filter-label" for="lab_room">Lab Room:</label>
+                    <select class="filter-input" id="lab_room" name="lab_room">
+                        <option value="">All Labs</option>
+                        <option value="524" {% if request.args.get('lab_room') == '524' %}selected{% endif %}>524</option>
+                        <option value="526" {% if request.args.get('lab_room') == '526' %}selected{% endif %}>526</option>
+                        <option value="528" {% if request.args.get('lab_room') == '528' %}selected{% endif %}>528</option>
+                        <option value="530" {% if request.args.get('lab_room') == '530' %}selected{% endif %}>530</option>
+                        <option value="542" {% if request.args.get('lab_room') == '542' %}selected{% endif %}>542</option>
+                        <option value="544" {% if request.args.get('lab_room') == '544' %}selected{% endif %}>544</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label class="filter-label" for="purpose">Purpose:</label>
+                    <select class="filter-input" id="purpose" name="purpose">
+                        <option value="">All Purposes</option>
+                        <option value="C" {% if request.args.get('purpose') == 'C' %}selected{% endif %}>C</option>
+                        <option value="C#" {% if request.args.get('purpose') == 'C#' %}selected{% endif %}>C#</option>
+                        <option value="ASP.NET" {% if request.args.get('purpose') == 'ASP.NET' %}selected{% endif %}>ASP.NET</option>
+                        <option value="Java" {% if request.args.get('purpose') == 'Java' %}selected{% endif %}>Java</option>
+                        <option value="PHP" {% if request.args.get('purpose') == 'PHP' %}selected{% endif %}>PHP</option>
+                        <option value="Other" {% if request.args.get('purpose') == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
             </div>
             <div style="display: flex; gap: 10px;">
                 <!-- Search Button -->

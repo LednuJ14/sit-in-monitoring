@@ -482,9 +482,10 @@ def admin_sit_in_records():
     student_id = request.args.get('student_id', '')
     course = request.args.get('course', '')
     lab_room = request.args.get('lab_room', '')
+    purpose = request.args.get('purpose', '')  # Added purpose filter
     start_date = request.args.get('start_date', '')
     end_date = request.args.get('end_date', '')
-    search_bar = request.args.get('search_bar', '')  # Add search_bar parameter
+    search_bar = request.args.get('search_bar', '')
 
     try:
         conn = get_db_connection()
@@ -520,6 +521,10 @@ def admin_sit_in_records():
         if lab_room:
             conditions.append("s.lab_room = %s")
             params.append(lab_room)
+            
+        if purpose:
+            conditions.append("s.purpose = %s")
+            params.append(purpose)
 
         if start_date:
             conditions.append("DATE(s.start_time) >= %s")
@@ -534,7 +539,7 @@ def admin_sit_in_records():
                 (u.firstname LIKE %s OR u.lastname LIKE %s OR s.student_id LIKE %s OR u.course LIKE %s OR s.purpose LIKE %s OR s.lab_room LIKE %s)
             """)
             search_term = f"%{search_bar}%"
-            params.extend([search_term, search_term, search_term, search_term, search_term , search_term])
+            params.extend([search_term, search_term, search_term, search_term, search_term, search_term])
 
         # Apply conditions to the query if they exist
         if conditions:
@@ -2075,20 +2080,18 @@ def admin_reservation_requests():
     page = request.args.get('page', 1, type=int)
     per_page = 10
     
-    # Get filter parameters
-    student_id = request.args.get('student_id', '')
-    course = request.args.get('course', '')
-    lab_room = request.args.get('lab_room', '')
+    # Get search parameter and status
+    search_query = request.args.get('search', '')
     status = request.args.get('status', 'pending')  # Default to pending
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Build query with filters
+        # Build query with search
         query = """
             SELECT s.id, s.student_id, u.firstname, u.lastname, u.course, u.yearlevel, 
-                   s.purpose, s.lab_room, s.start_time, s.status, s.admin_notes, 
+                   s.purpose, s.lab_room, s.start_time, s.status, s.admin_notes, s.end_time,
                    u.remaining_sessions
             FROM sit_ins s
             JOIN students u ON s.student_id = u.idno
@@ -2097,20 +2100,19 @@ def admin_reservation_requests():
         count_query = "SELECT COUNT(*) as total FROM sit_ins s JOIN students u ON s.student_id = u.idno WHERE 1=1"
         params = []
         
-        if student_id:
-            query += " AND s.student_id = %s"
-            count_query += " AND s.student_id = %s"
-            params.append(student_id)
-        
-        if course:
-            query += " AND u.course = %s"
-            count_query += " AND u.course = %s"
-            params.append(course)
-        
-        if lab_room:
-            query += " AND s.lab_room = %s"
-            count_query += " AND s.lab_room = %s"
-            params.append(lab_room)
+        if search_query:
+            search_condition = """ AND (
+                s.student_id LIKE %s OR 
+                u.firstname LIKE %s OR 
+                u.lastname LIKE %s OR 
+                u.course LIKE %s OR 
+                s.purpose LIKE %s OR 
+                s.lab_room LIKE %s
+            )"""
+            search_param = f"%{search_query}%"
+            query += search_condition
+            count_query += search_condition
+            params.extend([search_param, search_param, search_param, search_param, search_param, search_param])
         
         if status:
             query += " AND s.status = %s"
@@ -2139,10 +2141,8 @@ def admin_reservation_requests():
             reservations=reservations,
             page=page,
             total_pages=total_pages,
+            search_query=search_query,
             filters={
-                'student_id': student_id,
-                'course': course,
-                'lab_room': lab_room,
                 'status': status
             }
         )
@@ -2155,10 +2155,8 @@ def admin_reservation_requests():
             reservations=[],
             page=1,
             total_pages=0,
+            search_query='',
             filters={
-                'student_id': '',
-                'course': '',
-                'lab_room': '',
                 'status': 'pending'
             }
         )

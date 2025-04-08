@@ -43,53 +43,26 @@
     <!-- Filter Form -->
     <div class="w3-card-4 w3-margin-bottom w3-round-large">
         <header class="w3-container" style="background-color: #0047ab; color: white; border-radius: 8px 8px 0 0;">
-            <h3>Filters</h3>
+            <h3>Search Reservations</h3>
         </header>
         <div class="w3-container w3-padding">
             <form method="GET" class="w3-row-padding">
-                <div class="w3-quarter">
-                    <label>Student ID:</label>
-                    <input class="w3-input w3-border" type="text" name="student_id" value="{{ filters.student_id }}">
+                <div class="w3-threequarter">
+                    <input class="w3-input w3-border w3-round" type="text" name="search" placeholder="Search by ID, name, course, purpose, or lab room..." value="{{ search_query }}">
                 </div>
                 <div class="w3-quarter">
-                    <label>Course:</label>
-                    <select class="w3-select w3-border" name="course">
-                        <option value="">All Courses</option>
-                        <option value="BSIT" {% if filters.course == 'BSIT' %}selected{% endif %}>BSIT</option>
-                        <option value="BSCS" {% if filters.course == 'BSCS' %}selected{% endif %}>BSCS</option>
-                        <option value="BSBA" {% if filters.course == 'BSBA' %}selected{% endif %}>BSBA</option>
-                        <option value="BSA" {% if filters.course == 'BSA' %}selected{% endif %}>BSA</option>
-                        <option value="BSHM" {% if filters.course == 'BSHM' %}selected{% endif %}>BSHM</option>
-                        <option value="BSE" {% if filters.course == 'BSE' %}selected{% endif %}>BSE</option>
-                        <option value="BSCJ" {% if filters.course == 'BSCJ' %}selected{% endif %}>BSCJ</option>
-                    </select>
-                </div>
-                <div class="w3-quarter">
-                    <label>Lab Room:</label>
-                    <select class="w3-select w3-border" name="lab_room">
-                        <option value="">All Labs</option>
-                        <option value="524" {% if filters.lab_room == '524' %}selected{% endif %}>524</option>
-                        <option value="526" {% if filters.lab_room == '526' %}selected{% endif %}>526</option>
-                        <option value="528" {% if filters.lab_room == '528' %}selected{% endif %}>528</option>
-                        <option value="530" {% if filters.lab_room == '530' %}selected{% endif %}>530</option>
-                        <option value="542" {% if filters.lab_room == '542' %}selected{% endif %}>542</option>
-                        <option value="544" {% if filters.lab_room == '544' %}selected{% endif %}>544</option>
-                    </select>
-                </div>
-                <div class="w3-quarter">
-                    <label>Status:</label>
-                    <select class="w3-select w3-border" name="status">
+                    <select class="w3-select w3-border w3-round" name="status">
                         <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>Pending</option>
                         <option value="approved" {% if filters.status == 'approved' %}selected{% endif %}>Approved</option>
                         <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>Rejected</option>
-                        <option value="" {% if filters.status == '' %}selected{% endif %}>All</option>
+                        <option value="" {% if filters.status == '' %}selected{% endif %}>All Statuses</option>
                     </select>
                 </div>
                 <div class="w3-row w3-padding-16">
-                    <button type="submit" class="w3-button w3-blue w3-margin-top">
-                        <i class="fas fa-filter"></i> Apply Filters
+                    <button type="submit" class="w3-button w3-blue w3-round w3-margin-top">
+                        <i class="fas fa-search"></i> Search
                     </button>
-                    <a href="{{ url_for('admin_reservation_requests') }}" class="w3-button w3-light-grey w3-margin-top">
+                    <a href="{{ url_for('admin_reservation_requests') }}" class="w3-button w3-light-grey w3-round w3-margin-top">
                         <i class="fas fa-undo"></i> Reset
                     </a>
                 </div>
@@ -206,15 +179,15 @@
         {% if total_pages > 1 %}
         <div class="w3-bar w3-padding w3-center">
             {% if page > 1 %}
-                <a href="{{ url_for('admin_reservation_requests', page=page-1, student_id=filters.student_id, course=filters.course, lab_room=filters.lab_room, status=filters.status) }}" class="w3-button">&laquo;</a>
+                <a href="{{ url_for('admin_reservation_requests', page=page-1, search=search_query, status=filters.status) }}" class="w3-button">&laquo;</a>
             {% endif %}
             
             {% for i in range(1, total_pages + 1) %}
-                <a href="{{ url_for('admin_reservation_requests', page=i, student_id=filters.student_id, course=filters.course, lab_room=filters.lab_room, status=filters.status) }}" class="w3-button {% if i == page %}w3-blue{% endif %}">{{ i }}</a>
+                <a href="{{ url_for('admin_reservation_requests', page=i, search=search_query, status=filters.status) }}" class="w3-button {% if i == page %}w3-blue{% endif %}">{{ i }}</a>
             {% endfor %}
             
             {% if page < total_pages %}
-                <a href="{{ url_for('admin_reservation_requests', page=page+1, student_id=filters.student_id, course=filters.course, lab_room=filters.lab_room, status=filters.status) }}" class="w3-button">&raquo;</a>
+                <a href="{{ url_for('admin_reservation_requests', page=page+1, search=search_query, status=filters.status) }}" class="w3-button">&raquo;</a>
             {% endif %}
         </div>
         {% endif %}

@@ -3,6 +3,7 @@
 {% block title %}Statistics{% endblock %}
 
 {% block head %}
+{{ super() }}
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -18,6 +19,10 @@
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         padding: 20px;
         text-align: center;
+        transition: transform 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
     }
     .stat-number {
         font-size: 32px;
@@ -35,6 +40,7 @@
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         padding: 20px;
         margin-bottom: 30px;
+        height: 350px;
     }
     .chart-title {
         font-size: 18px;
@@ -54,6 +60,8 @@
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         padding: 20px;
         margin-bottom: 30px;
+    }
+    .filter-row {
         display: flex;
         flex-wrap: wrap;
         gap: 15px;
@@ -62,32 +70,63 @@
     .filter-group {
         flex: 1;
         min-width: 200px;
+        margin-bottom: 10px;
     }
     .filter-label {
         display: block;
         margin-bottom: 5px;
         color: #555;
+        font-weight: 600;
     }
     .filter-input {
         width: 100%;
-        padding: 8px;
+        padding: 10px;
         border: 1px solid #ddd;
         border-radius: 4px;
+        font-size: 14px;
     }
     .filter-button {
         background-color: #0047ab;
         color: white;
         border: none;
-        padding: 10px 15px;
+        padding: 10px 20px;
         border-radius: 4px;
         cursor: pointer;
+        font-weight: 600;
+        transition: background-color 0.2s ease;
     }
     .filter-button:hover {
         background-color: #003380;
     }
+    .no-data-message {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+        font-style: italic;
+    }
+    .chart-wrapper {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    
+    @media (max-width: 992px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+    }
     
     @media (max-width: 768px) {
-        .charts-grid {
+        .stats-container {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+        .filter-group {
+            min-width: 100%;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .stats-container {
             grid-template-columns: 1fr;
         }
     }
@@ -97,90 +136,100 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <h2><i class="fas fa-chart-bar"></i> Statistics</h2>
-        <p class="text-muted">Analyze sit-in usage patterns and trends.</p>
+        <h2><i class="fas fa-chart-bar"></i> Statistics Dashboard</h2>
+        <p class="text-muted">Analyze sit-in usage patterns and trends over time</p>
     </div>
+    
+    <div class="card-body">
+        <!-- Filter Form -->
+        <div class="filter-form">
+            <form action="{{ url_for('admin_statistics') }}" method="GET" id="statsFilterForm">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label" for="start_date">Start Date:</label>
+                        <input type="date" id="start_date" name="start_date" class="filter-input" 
+                            value="{{ start_date }}">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label" for="end_date">End Date:</label>
+                        <input type="date" id="end_date" name="end_date" class="filter-input" 
+                            value="{{ end_date }}">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label" for="chart_type">Chart Type:</label>
+                        <select id="chart_type" name="chart_type" class="filter-input">
+                            <option value="daily" {% if chart_type == 'daily' %}selected{% endif %}>Daily</option>
+                            <option value="weekly" {% if chart_type == 'weekly' %}selected{% endif %}>Weekly</option>
+                            <option value="monthly" {% if chart_type == 'monthly' %}selected{% endif %}>Monthly</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex: 0 0 auto;">
+                        <button type="submit" class="filter-button">
+                            <i class="fas fa-filter"></i> Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
 
-    <!-- Filter Form -->
-    <div class="filter-form">
-        <form action="{{ url_for('admin_statistics') }}" method="GET">
-            <div class="filter-group">
-                <label class="filter-label" for="start_date">Start Date:</label>
-                <input type="date" id="start_date" name="start_date" class="filter-input" 
-                       value="{{ request.args.get('start_date', '') }}">
+        {% if total_sit_ins > 0 %}
+            <!-- Sit-in Activity Chart -->
+            <div class="chart-container">
+                <div class="chart-title">Sit-in Activity Over Time</div>
+                <div class="chart-wrapper">
+                    <canvas id="timeChart"></canvas>
+                </div>
             </div>
-            <div class="filter-group">
-                <label class="filter-label" for="end_date">End Date:</label>
-                <input type="date" id="end_date" name="end_date" class="filter-input" 
-                       value="{{ request.args.get('end_date', '') }}">
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <!-- Course Distribution -->
+                <div class="chart-container">
+                    <div class="chart-title">Distribution by Course</div>
+                    <div class="chart-wrapper">
+                        <canvas id="courseChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Purpose Distribution -->
+                <div class="chart-container">
+                    <div class="chart-title">Purpose Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="purposeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Lab Room Usage -->
+                <div class="chart-container">
+                    <div class="chart-title">Lab Room Usage</div>
+                    <div class="chart-wrapper">
+                        <canvas id="labRoomChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Time Distribution -->
+                <div class="chart-container">
+                    <div class="chart-title">Sit-in Time Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="hourlyChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Year Level Distribution Chart -->
+                <div class="chart-container">
+                    <div class="chart-title">Year Level Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="yearLevelChart"></canvas>
+                    </div>
+                </div>
             </div>
-            <div class="filter-group">
-                <label class="filter-label" for="chart_type">Chart Type:</label>
-                <select id="chart_type" name="chart_type" class="filter-input">
-                    <option value="daily" {% if request.args.get('chart_type') == 'daily' %}selected{% endif %}>Daily</option>
-                    <option value="weekly" {% if request.args.get('chart_type') == 'weekly' %}selected{% endif %}>Weekly</option>
-                    <option value="monthly" {% if request.args.get('chart_type') == 'monthly' %}selected{% endif %}>Monthly</option>
-                </select>
+        {% else %}
+            <div class="no-data-message">
+                <i class="fas fa-chart-area fa-3x mb-3"></i>
+                <h3>No data available for the selected time period</h3>
+                <p>Try selecting a different date range or removing filters</p>
             </div>
-            <button type="submit" class="filter-button">
-                <i class="fas fa-filter"></i> Apply Filters
-            </button>
-        </form>
-    </div>
-
-    <!-- Summary Statistics -->
-    <div class="stats-container">
-        <div class="stat-card">
-            <div class="stat-label">Total Sit-ins</div>
-            <div class="stat-number">{{ total_sit_ins }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Unique Students</div>
-            <div class="stat-number">{{ unique_students }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Avg. Duration</div>
-            <div class="stat-number">{{ avg_duration }}</div>
-            <div class="stat-label">minutes</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Peak Hour</div>
-            <div class="stat-number">{{ peak_hour }}</div>
-            <div class="stat-label">{{ peak_count }} sit-ins</div>
-        </div>
-    </div>
-
-    <!-- Sit-in Activity Chart -->
-    <div class="chart-container">
-        <div class="chart-title">Sit-in Activity Over Time</div>
-        <canvas id="timeChart"></canvas>
-    </div>
-
-    <!-- Charts Grid -->
-    <div class="charts-grid">
-        <!-- Course Distribution -->
-        <div class="chart-container">
-            <div class="chart-title">Distribution by Course</div>
-            <canvas id="courseChart"></canvas>
-        </div>
-
-        <!-- Purpose Distribution -->
-        <div class="chart-container">
-            <div class="chart-title">Purpose Distribution</div>
-            <canvas id="purposeChart"></canvas>
-        </div>
-
-        <!-- Lab Room Usage -->
-        <div class="chart-container">
-            <div class="chart-title">Lab Room Usage</div>
-            <canvas id="labRoomChart"></canvas>
-        </div>
-
-        <!-- Time Distribution -->
-        <div class="chart-container">
-            <div class="chart-title">Sit-in Time Distribution</div>
-            <canvas id="hourlyChart"></canvas>
-        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -221,192 +270,247 @@
 
     // Initialize charts with data
     document.addEventListener('DOMContentLoaded', function() {
-        // Time Chart - Activity data
-        const timeCtx = document.getElementById('timeChart').getContext('2d');
-        const activityData = {{ activity_data|default([])|tojson }};
-        
-        const timeLabels = [];
-        const timeValues = [];
-        
-        if (activityData && activityData.length > 0) {
-            activityData.forEach(item => {
-                timeLabels.push(item.label || '');
-                timeValues.push(item.value || 0);
+        {% if total_sit_ins > 0 %}
+            // Time Chart - Activity data
+            const timeCtx = document.getElementById('timeChart').getContext('2d');
+            const activityData = {{ activity_data|default([])|tojson }};
+            
+            const timeLabels = [];
+            const timeValues = [];
+            
+            if (activityData && activityData.length > 0) {
+                activityData.forEach(item => {
+                    timeLabels.push(item.label || '');
+                    timeValues.push(item.value || 0);
+                });
+            } else {
+                timeLabels.push('No Data');
+                timeValues.push(0);
+            }
+            
+            new Chart(timeCtx, {
+                type: '{{ "line" if chart_type == "daily" or chart_type == "weekly" else "bar" }}',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'Number of Sit-ins',
+                        data: timeValues,
+                        backgroundColor: 'rgba(0, 71, 171, 0.2)',
+                        borderColor: 'rgba(0, 71, 171, 1)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    }]
+                },
+                options: chartOptions
             });
-        } else {
-            timeLabels.push('No Data');
-            timeValues.push(0);
-        }
-        
-        new Chart(timeCtx, {
-            type: '{{ request.args.get("chart_type", "line") }}',
-            data: {
-                labels: timeLabels,
-                datasets: [{
-                    label: 'Number of Sit-ins',
-                    data: timeValues,
-                    backgroundColor: 'rgba(0, 71, 171, 0.2)',
-                    borderColor: 'rgba(0, 71, 171, 1)',
-                    borderWidth: 2,
-                    tension: 0.1
-                }]
-            },
-            options: chartOptions
-        });
 
-        // Course Chart
-        const courseCtx = document.getElementById('courseChart').getContext('2d');
-        const courseData = {{ course_data|default([])|tojson }};
-        
-        const courseLabels = [];
-        const courseValues = [];
-        
-        if (courseData && courseData.length > 0) {
-            courseData.forEach(item => {
-                courseLabels.push(item.label || '');
-                courseValues.push(item.value || 0);
-            });
-        } else {
-            courseLabels.push('No Data');
-            courseValues.push(0);
-        }
-        
-        const courseColors = generateColors(courseLabels.length);
-        
-        new Chart(courseCtx, {
-            type: 'pie',
-            data: {
-                labels: courseLabels,
-                datasets: [{
-                    data: courseValues,
-                    backgroundColor: courseColors,
-                    borderColor: 'white',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                plugins: {
-                    legend: {
-                        position: 'right'
+            // Course Chart
+            const courseCtx = document.getElementById('courseChart').getContext('2d');
+            const courseData = {{ course_data|default([])|tojson }};
+            
+            const courseLabels = [];
+            const courseValues = [];
+            
+            if (courseData && courseData.length > 0) {
+                courseData.forEach(item => {
+                    courseLabels.push(item.label || '');
+                    courseValues.push(item.value || 0);
+                });
+            } else {
+                courseLabels.push('No Data');
+                courseValues.push(0);
+            }
+            
+            const courseColors = generateColors(courseLabels.length);
+            
+            new Chart(courseCtx, {
+                type: 'pie',
+                data: {
+                    labels: courseLabels,
+                    datasets: [{
+                        data: courseValues,
+                        backgroundColor: courseColors,
+                        borderColor: 'white',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
                     }
                 }
+            });
+
+            // Purpose Chart
+            const purposeCtx = document.getElementById('purposeChart').getContext('2d');
+            const purposeData = {{ purpose_data|default([])|tojson }};
+            
+            const purposeLabels = [];
+            const purposeValues = [];
+            
+            if (purposeData && purposeData.length > 0) {
+                purposeData.forEach(item => {
+                    purposeLabels.push(item.label || '');
+                    purposeValues.push(item.value || 0);
+                });
+            } else {
+                purposeLabels.push('No Data');
+                purposeValues.push(0);
+            }
+            
+            const purposeColors = generateColors(purposeLabels.length);
+            
+            new Chart(purposeCtx, {
+                type: 'pie',
+                data: {
+                    labels: purposeLabels,
+                    datasets: [{
+                        data: purposeValues,
+                        backgroundColor: purposeColors,
+                        borderColor: 'white',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+
+            // Lab Room Chart
+            const labRoomCtx = document.getElementById('labRoomChart').getContext('2d');
+            const labRoomData = {{ lab_room_data|default([])|tojson }};
+            
+            const labRoomLabels = [];
+            const labRoomValues = [];
+            
+            if (labRoomData && labRoomData.length > 0) {
+                labRoomData.forEach(item => {
+                    labRoomLabels.push(item.label || '');
+                    labRoomValues.push(item.value || 0);
+                });
+            } else {
+                labRoomLabels.push('No Data');
+                labRoomValues.push(0);
+            }
+            
+            const labRoomColors = generateColors(labRoomLabels.length);
+            
+            new Chart(labRoomCtx, {
+                type: 'bar',
+                data: {
+                    labels: labRoomLabels,
+                    datasets: [{
+                        label: 'Usage Count',
+                        data: labRoomValues,
+                        backgroundColor: labRoomColors,
+                        borderColor: 'white',
+                        borderWidth: 1
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Time Distribution Chart
+            const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+            const timeDistData = {{ time_distribution_data|default([])|tojson }};
+            
+            const hourlyLabels = [];
+            const hourlyValues = [];
+            
+            if (timeDistData && timeDistData.length > 0) {
+                timeDistData.forEach(item => {
+                    hourlyLabels.push(item.label || '');
+                    hourlyValues.push(item.value || 0);
+                });
+            } else {
+                hourlyLabels.push('No Data');
+                hourlyValues.push(0);
+            }
+            
+            new Chart(hourlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: hourlyLabels,
+                    datasets: [{
+                        label: 'Sit-ins per Time Period',
+                        data: hourlyValues,
+                        backgroundColor: 'rgba(0, 71, 171, 0.6)',
+                        borderColor: 'rgba(0, 71, 171, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Year Level Chart
+            const yearLevelCtx = document.getElementById('yearLevelChart').getContext('2d');
+            const yearLevelData = {{ year_level_data|default([])|tojson }};
+            
+            const yearLevelLabels = [];
+            const yearLevelValues = [];
+            
+            if (yearLevelData && yearLevelData.length > 0) {
+                yearLevelData.forEach(item => {
+                    yearLevelLabels.push(item.label || '');
+                    yearLevelValues.push(item.value || 0);
+                });
+            } else {
+                yearLevelLabels.push('No Data');
+                yearLevelValues.push(0);
+            }
+            
+            const yearLevelColors = generateColors(yearLevelLabels.length);
+            
+            new Chart(yearLevelCtx, {
+                type: 'polarArea',
+                data: {
+                    labels: yearLevelLabels,
+                    datasets: [{
+                        data: yearLevelValues,
+                        backgroundColor: yearLevelColors,
+                        borderColor: 'white',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+        {% endif %}
+
+        // Set min date for end_date based on start_date selection
+        const startDateInput = document.getElementById('start_date');
+        const endDateInput = document.getElementById('end_date');
+        
+        startDateInput.addEventListener('change', function() {
+            endDateInput.min = this.value;
+            if (endDateInput.value && endDateInput.value < this.value) {
+                endDateInput.value = this.value;
+            }
+        });
+        
+        // Set max date for start_date based on end_date selection
+        endDateInput.addEventListener('change', function() {
+            startDateInput.max = this.value;
+            if (startDateInput.value && startDateInput.value > this.value) {
+                startDateInput.value = this.value;
             }
         });
 
-        // Purpose Chart
-        const purposeCtx = document.getElementById('purposeChart').getContext('2d');
-        const purposeData = {{ purpose_data|default([])|tojson }};
-        
-        const purposeLabels = [];
-        const purposeValues = [];
-        
-        if (purposeData && purposeData.length > 0) {
-            purposeData.forEach(item => {
-                purposeLabels.push(item.label || '');
-                purposeValues.push(item.value || 0);
-            });
-        } else {
-            purposeLabels.push('No Data');
-            purposeValues.push(0);
-        }
-        
-        const purposeColors = generateColors(purposeLabels.length);
-        
-        new Chart(purposeCtx, {
-            type: 'pie',
-            data: {
-                labels: purposeLabels,
-                datasets: [{
-                    data: purposeValues,
-                    backgroundColor: purposeColors,
-                    borderColor: 'white',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                plugins: {
-                    legend: {
-                        position: 'right'
-                    }
-                }
-            }
-        });
-
-        // Lab Room Chart
-        const labRoomCtx = document.getElementById('labRoomChart').getContext('2d');
-        const labRoomData = {{ lab_room_data|default([])|tojson }};
-        
-        const labRoomLabels = [];
-        const labRoomValues = [];
-        
-        if (labRoomData && labRoomData.length > 0) {
-            labRoomData.forEach(item => {
-                labRoomLabels.push(item.label || '');
-                labRoomValues.push(item.value || 0);
-            });
-        } else {
-            labRoomLabels.push('No Data');
-            labRoomValues.push(0);
-        }
-        
-        const labRoomColors = generateColors(labRoomLabels.length);
-        
-        new Chart(labRoomCtx, {
-            type: 'bar',
-            data: {
-                labels: labRoomLabels,
-                datasets: [{
-                    label: 'Usage Count',
-                    data: labRoomValues,
-                    backgroundColor: labRoomColors,
-                    borderColor: 'white',
-                    borderWidth: 1
-                }]
-            },
-            options: chartOptions
-        });
-
-        // Time Distribution Chart
-        const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
-        const timeDistData = {{ time_distribution_data|default([])|tojson }};
-        
-        const hourlyLabels = [];
-        const hourlyValues = [];
-        
-        if (timeDistData && timeDistData.length > 0) {
-            timeDistData.forEach(item => {
-                hourlyLabels.push(item.label || '');
-                hourlyValues.push(item.value || 0);
-            });
-        } else {
-            hourlyLabels.push('No Data');
-            hourlyValues.push(0);
-        }
-        
-        new Chart(hourlyCtx, {
-            type: 'bar',
-            data: {
-                labels: hourlyLabels,
-                datasets: [{
-                    label: 'Sit-ins per Time Period',
-                    data: hourlyValues,
-                    backgroundColor: 'rgba(0, 71, 171, 0.6)',
-                    borderColor: 'rgba(0, 71, 171, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: chartOptions
-        });
+        // Set current date as max for both date inputs
+        const today = new Date().toISOString().split('T')[0];
+        startDateInput.max = today;
+        endDateInput.max = today;
     });
-
-    // Function to update charts based on filters
-    function updateCharts() {
-        const startDate = document.getElementById('start_date').value;
-        const endDate = document.getElementById('end_date').value;
-        const chartType = document.getElementById('chart_type').value;
-        
-        // Redirect with query parameters
-        window.location.href = `{{ url_for('admin_statistics') }}?start_date=${startDate}&end_date=${endDate}&chart_type=${chartType}`;
-    }
 </script>
 {% endblock %} 
